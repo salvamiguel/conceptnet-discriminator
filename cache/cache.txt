@@ -1,1 +1,1 @@
-{"BFS": {"apple": {"red": [{"concepto": "apple"}, {"concepto": "red", "relacion": "has_property"}]}}}
+{"BFS": {"gallery": {"drawing": [{"concepto": "gallery"}, {"concepto": "art", "relacion": "related_to"}, {"concepto": "drawing", "relacion": "is_a"}]}}}

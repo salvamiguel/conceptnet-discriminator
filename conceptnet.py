@@ -71,41 +71,50 @@ def obtener_relaciones_entrada(concepto, language = 'en'):
     for c in concepto_obj:
         if c.edges_in:
             for e in c.edges_in:
-                if e.end.language == c.language:
-                    relaciones.append({'concepto':e.end.text, 'relacion': e.relation.name})
+                if e.start.language == c.language:
+                    relaciones.append({'concepto':e.start.text, 'relacion': e.relation.name})
     return relaciones
 
 def obtener_relaciones(concepto, language = 'en'):
     return obtener_relaciones_entrada(concepto, language) + obtener_relaciones_salida(concepto, language)
 
-def bfs_conceptnet(concepto_inicio, concepto_final, max_iter = 600, language='en'):
+def bfs_conceptnet(concepto_inicio, concepto_final, max_iter = 1000, language='en'):
     cache = buscar_cache(concepto_inicio, concepto_final)
     if cache:
         return cache
 
     cola = [[{"concepto":concepto_inicio}]]
     visitado = []
-    bar = tqdm(total=max_iter, initial=0)
-    while cola and max_iter is not 0:
-        bar.update(1)
+    ##bar = tqdm(total=max_iter, initial=0)
+    while cola:
+        ##bar.update(1)
         max_iter = max_iter - 1
+        if len(cola) == 0:
+            return []
         camino = cola.pop(0)
         nodo = camino[-1]
+        #tqdm.write("Cola pendiente: " + str(cola))
         tqdm.write("Buscando relaciones en " + nodo["concepto"])
         if nodo["concepto"] == concepto_final:
             guardar_cache(concepto_inicio, concepto_final, camino)
             return camino
         elif nodo not in visitado:
-            for vecino in obtener_relaciones_salida(nodo["concepto"], language):
-                tqdm.write("\t Encontrada: " + nodo["concepto"] + " " + vecino["relacion"] + " " + vecino["concepto"])
+            for vecino in obtener_relaciones(nodo["concepto"], language):
+                if vecino["concepto"] == concepto_final:
+                    camino.append(vecino)
+                    guardar_cache(concepto_inicio, concepto_final, camino)
+                    return camino
+                #tqdm.write("\t->\tEncontrada: " + nodo["concepto"] + " " + vecino["relacion"] + " " + vecino["concepto"])
                 nuevo_camino = list(camino)
                 nuevo_camino.append(vecino)
                 cola.append(nuevo_camino)
             visitado.append(nodo)
-        else:
-            return []
+
 
 def imprimir_relaciones(lista_relaciones):
+    if len(lista_relaciones) == 0:
+        print("No hay relaciones")
+        return
     origen = lista_relaciones.pop(0)
     print(origen["concepto"])
     for relacion in lista_relaciones:
@@ -159,6 +168,6 @@ def guardar_cache(concepto_inicio, concepto_final, relacion, tipo = "BFS"):
         w.write(json.dumps(cache))
         w.close()
 
-imprimir_relaciones(bfs_conceptnet('apple', 'red'))
+imprimir_relaciones(bfs_conceptnet('gallery', 'drawing'))
 
     
