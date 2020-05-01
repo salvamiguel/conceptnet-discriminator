@@ -159,6 +159,6 @@ def guardar_cache(concepto_inicio, concepto_final, relacion, tipo = "BFS"):
         w.write(json.dumps(cache))
         w.close()
 
-#imprimir_relaciones(bfs_conceptnet('school', 'pencil'))
+imprimir_relaciones(bfs_conceptnet('apple', 'red'))
 
     

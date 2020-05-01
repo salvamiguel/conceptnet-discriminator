@@ -87,11 +87,11 @@ if not evaluation:
 
 for k,v in evaluation.items():
     if len(v) != 2:
-	if len(v)<2:
+        if len(v) < 2:
             message = "Entry "+k+" is missing in submission file."
-	elif len(v)>2:
+    elif len(v)>2:
             message = "Entry "+k+" has duplicate entries in submission file."
-        sys.exit(message)
+    sys.exit(message)
 
 # the scores for the leaderboard must be in a file named "scores.txt"
 # https://github.com/codalab/codalab-competitions/wiki/User_Building-a-Scoring-Program-for-a-Competition#directory-structure-for-submissions

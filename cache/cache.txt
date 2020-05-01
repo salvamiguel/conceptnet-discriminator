@@ -1,0 +1,1 @@
+{"BFS": {"apple": {"red": [{"concepto": "apple"}, {"concepto": "red", "relacion": "has_property"}]}}}
