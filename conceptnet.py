@@ -86,7 +86,7 @@ def bfs_conceptnet(concepto_inicio, concepto_final, max_iter = 1000, language='e
     cola = [[{"concepto":concepto_inicio}]]
     visitado = []
     ##bar = tqdm(total=max_iter, initial=0)
-    while cola:
+    while cola and max_iter is not 0:
         ##bar.update(1)
         max_iter = max_iter - 1
         if len(cola) == 0:
