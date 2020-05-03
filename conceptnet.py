@@ -9,7 +9,7 @@ RUTA_BD = "./db/db_conceptnet.db"
 RUTA_CACHE = "./cache/cache.txt"
 conceptnet_lite.connect(RUTA_BD)
 
-listado_relaciones = ['related_to', 'form_of', 'is_a', 'part_of', 'has_a','used_for', 'capable_of', 'at_location','causes',    'has_subevent',    'has_first_subevent',     'has_last_subevent',    'has_prerequisite',     'has_property',     'motivated_by_goal',     'obstructed_by',    'desires',    'created_by', 'synonym',    'antonym',    'distinct_from',    'derived_from',    'symbol_of',    'defined_as',    'manner_of',    'located_near',    'has_context',    'similar_to',    'etymologically_related_to',    'etymologically_derived_from',    'causes_desire',    'made_of',    'receives_action',    'external_url']
+lista_todas_relaciones = ['related_to', 'form_of', 'is_a', 'part_of', 'has_a','used_for', 'capable_of', 'at_location','causes',    'has_subevent',    'has_first_subevent',     'has_last_subevent',    'has_prerequisite',     'has_property',     'motivated_by_goal',     'obstructed_by',    'desires',    'created_by', 'synonym',    'antonym',    'distinct_from',    'derived_from',    'symbol_of',    'defined_as',    'manner_of',    'located_near',    'has_context',    'similar_to',    'etymologically_related_to',    'etymologically_derived_from',    'causes_desire',    'made_of',    'receives_action',    'external_url']
 
 def obtener_etiquetas(label, language='en'):
     """Obtiene las etiquetas correspondientes 
@@ -130,37 +130,45 @@ def imprimir_relaciones(lista_relaciones):
     print(lista_relaciones[-1]["concepto"])
     print(resultado_relaciones(lista_relaciones))
     
-def resultado_relaciones(lista_relaciones):
-#    if not isinstance(lista_relaciones, list) or len(lista_relaciones) == 0:
-
+def resultado_relaciones(lista_relaciones, retornar_lista = True):
+    if not isinstance(lista_relaciones, list):
+        lista_relaciones = []
     lista = []
     for relacion in lista_relaciones:
         if "relacion" in relacion:
             lista.append(relacion["relacion"])
-    resultado = dict(Counter(lista))
-    for tipo_relacion in listado_relaciones:
-        if tipo_relacion not in resultado.keys():
-            resultado[tipo_relacion] = 0
-    return resultado
+    dict_relaciones = dict(Counter(lista))
+    for tipo_relacion in lista_todas_relaciones:
+        if tipo_relacion not in dict_relaciones.keys():
+            dict_relaciones[tipo_relacion] = 0
+    print(sorted(dict_relaciones))
+    if retornar_lista:
+        lista_resultado = []
+        for relacion in sorted(dict_relaciones):
+            lista_resultado.append(dict_relaciones[relacion])
+        return lista_resultado
+    else:
+        return dict_relaciones
 
 
-def buscar_cache(concepto_inicio, concepto_final, tipo = "BFS"):
+def buscar_cache(concepto_inicio, concepto_final, language = 'en', tipo = "BFS"):
     if os.path.isfile(RUTA_CACHE):
         f = open(RUTA_CACHE, "r")
         cache = json.loads(f.read())
         f.close()
-        if concepto_inicio in cache[tipo] and concepto_final in cache[tipo][concepto_inicio]:
-            return cache[tipo][concepto_inicio][concepto_final]
+        if language in cache and tipo in cache[language] and concepto_inicio in cache[language][tipo] and concepto_final in cache[language][tipo][concepto_inicio]:
+            return cache[language][tipo][concepto_inicio][concepto_final]
     else:
         return False
 
-def guardar_cache(concepto_inicio, concepto_final, relacion, tipo = "BFS"):
+def guardar_cache(concepto_inicio, concepto_final, relacion, language = 'en', tipo = "BFS"):
     if not os.path.isfile(RUTA_CACHE) or os.path.getsize(RUTA_CACHE) == 0:
         f = open(RUTA_CACHE,"x")
         cache = {}
-        cache[tipo] = {}
-        cache[tipo][concepto_inicio] = {}
-        cache[tipo][concepto_inicio][concepto_final] = relacion
+        cache[language] = {}
+        cache[language][tipo] = {}
+        cache[language][tipo][concepto_inicio] = {}
+        cache[language][tipo][concepto_inicio][concepto_final] = relacion
 
         f.write(json.dumps(cache))
         f.close()
@@ -168,16 +176,18 @@ def guardar_cache(concepto_inicio, concepto_final, relacion, tipo = "BFS"):
         r = open(RUTA_CACHE, "r")
         cache = json.loads(r.read())
         r.close()
-        if tipo not in cache:
+        if language not in cache:
             cache = {}
-            cache[tipo] = {}
-        if concepto_inicio not in cache[tipo]:
-            cache[tipo][concepto_inicio] = {} 
-        cache[tipo][concepto_inicio][concepto_final] = relacion
+            cache[language] = {}
+        if tipo not in cache[language]:
+            cache[language][tipo] = {}
+        if concepto_inicio not in cache[language][tipo]:
+            cache[language][tipo][concepto_inicio] = {} 
+        cache[language][tipo][concepto_inicio][concepto_final] = relacion
         w = open(RUTA_CACHE, "w")
         w.write(json.dumps(cache))
         w.close()
 
-#imprimir_relaciones(bfs_conceptnet('gallery', 'drawing'))
+#imprimir_relaciones(bfs_conceptnet('graphite', 'drawing'))
 
     

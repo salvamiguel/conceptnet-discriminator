@@ -1,3 +1,5 @@
 db/db_conceptnet.db
 .DS_Store
 __pycache__/*
+.vscode/.ropeproject/config.py
+.vscode/.ropeproject/objectdb
