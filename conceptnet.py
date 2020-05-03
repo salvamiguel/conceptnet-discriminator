@@ -55,8 +55,12 @@ def obtener_relaciones_directas(c1, c2):
        relaciones.append(relacion.relation.name)
     return Counter(relaciones)
 
-def obtener_relaciones_salida(concepto, language = 'en'):
-    concepto_obj = obtener_etiquetas(concepto, language)
+def obtener_relaciones_salida(concepto, language='en'):
+    try:
+        concepto_obj = obtener_etiquetas(concepto, language)
+    except:
+        print("Concepto no encontrado " + concepto)
+        return []
     relaciones = []
     for c in concepto_obj:
         if c.edges_out:
@@ -66,7 +70,11 @@ def obtener_relaciones_salida(concepto, language = 'en'):
     return relaciones
  
 def obtener_relaciones_entrada(concepto, language = 'en'):
-    concepto_obj = obtener_etiquetas(concepto, language)
+    try:
+        concepto_obj = obtener_etiquetas(concepto, language)
+    except:
+        print("Concepto no encontrado " + concepto)
+        return []
     relaciones = []
     for c in concepto_obj:
         if c.edges_in:
@@ -78,7 +86,7 @@ def obtener_relaciones_entrada(concepto, language = 'en'):
 def obtener_relaciones(concepto, language = 'en'):
     return obtener_relaciones_entrada(concepto, language) + obtener_relaciones_salida(concepto, language)
 
-def bfs_conceptnet(concepto_inicio, concepto_final, max_iter = 1000, language='en'):
+def bfs_conceptnet(concepto_inicio, concepto_final, max_iter = 100, language='en'):
     cache = buscar_cache(concepto_inicio, concepto_final)
     if cache:
         return cache
@@ -112,7 +120,7 @@ def bfs_conceptnet(concepto_inicio, concepto_final, max_iter = 1000, language='e
 
 
 def imprimir_relaciones(lista_relaciones):
-    if len(lista_relaciones) == 0:
+    if not isinstance(lista_relaciones, list) or len(lista_relaciones) == 0:
         print("No hay relaciones")
         return
     origen = lista_relaciones.pop(0)
@@ -123,6 +131,8 @@ def imprimir_relaciones(lista_relaciones):
     print(resultado_relaciones(lista_relaciones))
     
 def resultado_relaciones(lista_relaciones):
+#    if not isinstance(lista_relaciones, list) or len(lista_relaciones) == 0:
+
     lista = []
     for relacion in lista_relaciones:
         if "relacion" in relacion:
@@ -132,6 +142,7 @@ def resultado_relaciones(lista_relaciones):
         if tipo_relacion not in resultado.keys():
             resultado[tipo_relacion] = 0
     return resultado
+
 
 def buscar_cache(concepto_inicio, concepto_final, tipo = "BFS"):
     if os.path.isfile(RUTA_CACHE):
@@ -145,7 +156,6 @@ def buscar_cache(concepto_inicio, concepto_final, tipo = "BFS"):
 
 def guardar_cache(concepto_inicio, concepto_final, relacion, tipo = "BFS"):
     if not os.path.isfile(RUTA_CACHE) or os.path.getsize(RUTA_CACHE) == 0:
-        print()
         f = open(RUTA_CACHE,"x")
         cache = {}
         cache[tipo] = {}
@@ -168,6 +178,6 @@ def guardar_cache(concepto_inicio, concepto_final, relacion, tipo = "BFS"):
         w.write(json.dumps(cache))
         w.close()
 
-imprimir_relaciones(bfs_conceptnet('gallery', 'drawing'))
+#imprimir_relaciones(bfs_conceptnet('gallery', 'drawing'))
 
     
