@@ -2,9 +2,10 @@ import conceptnet_lite
 from conceptnet_lite import Label, edges_between, RelationName
 from tqdm import tqdm
 from collections import Counter
-import os.path
+import os
 
 import json
+
 RUTA_BD = "./db/db_conceptnet.db"
 RUTA_CACHE = "./cache/cache.txt"
 conceptnet_lite.connect(RUTA_BD)
@@ -66,7 +67,7 @@ def obtener_relaciones_salida(concepto, language='en'):
         if c.edges_out:
             for e in c.edges_out:
                 if e.end.language == c.language:
-                    relaciones.append({'concepto':e.end.text, 'relacion': e.relation.name})
+                    relaciones.append({'concepto':e.end.text, 'relacion': e.relation.name, "direccion": 1})
     return relaciones
  
 def obtener_relaciones_entrada(concepto, language = 'en'):
@@ -80,7 +81,7 @@ def obtener_relaciones_entrada(concepto, language = 'en'):
         if c.edges_in:
             for e in c.edges_in:
                 if e.start.language == c.language:
-                    relaciones.append({'concepto':e.start.text, 'relacion': e.relation.name})
+                    relaciones.append({'concepto':e.start.text, 'relacion': e.relation.name, "direccion": -1})
     return relaciones
 
 def obtener_relaciones(concepto, language = 'en'):
@@ -88,7 +89,7 @@ def obtener_relaciones(concepto, language = 'en'):
 
 def bfs_conceptnet(concepto_inicio, concepto_final, max_iter = 100, language='en'):
     cache = buscar_cache(concepto_inicio, concepto_final)
-    if cache:
+    if cache or (isinstance(cache, list) and len(cache) >= 0):
         return cache
 
     cola = [[{"concepto":concepto_inicio}]]
@@ -102,7 +103,7 @@ def bfs_conceptnet(concepto_inicio, concepto_final, max_iter = 100, language='en
         camino = cola.pop(0)
         nodo = camino[-1]
         #tqdm.write("Cola pendiente: " + str(cola))
-        tqdm.write("Buscando relaciones en " + nodo["concepto"])
+        tqdm.write("Buscando relaciones desde " + concepto_inicio + " en " + nodo["concepto"] + " hasta " + concepto_final)
         if nodo["concepto"] == concepto_final:
             guardar_cache(concepto_inicio, concepto_final, camino)
             return camino
@@ -117,6 +118,42 @@ def bfs_conceptnet(concepto_inicio, concepto_final, max_iter = 100, language='en
                 nuevo_camino.append(vecino)
                 cola.append(nuevo_camino)
             visitado.append(nodo)
+
+def bfs_conceptnet_v2(concepto_inicio, concepto_final, max_iter = 20, language='en'):
+    cache = buscar_cache(concepto_inicio, concepto_final, language, 'BFS_v2')
+    lista_caminos = []
+    if cache or (isinstance(cache, list) and len(cache) >= 0):
+        return cache
+    cola = [[{"concepto":concepto_inicio}]]
+    visitado = []
+    ##bar = tqdm(total=max_iter, initial=0)
+    while cola and max_iter is not 0:
+        ##bar.update(1)
+        max_iter = max_iter - 1
+        if len(cola) == 0:
+            break
+        camino = cola.pop(0)
+        nodo = camino[-1]
+        #tqdm.write("Cola pendiente: " + str(cola))
+        tqdm.write("Buscando relaciones desde " + concepto_inicio + " en " + nodo["concepto"] + " hasta " + concepto_final)
+        if nodo["concepto"] == concepto_final:
+            #guardar_cache(concepto_inicio, concepto_final, camino)
+            lista_caminos.append(camino)
+        elif nodo not in visitado:
+            for vecino in obtener_relaciones(nodo["concepto"], language):
+                if vecino["concepto"] == concepto_final:
+                    camino.append(vecino)
+                    #guardar_cache(concepto_inicio, concepto_final, camino)
+                    lista_caminos.append(camino)
+                else:
+                    #tqdm.write("\t->\tEncontrada: " + nodo["concepto"] + " " + vecino["relacion"] + " " + vecino["concepto"])
+                    nuevo_camino = list(camino)
+                    nuevo_camino.append(vecino)
+                    cola.append(nuevo_camino)
+            visitado.append(nodo)
+    lista_caminos = list(map(json.loads, set(map(json.dumps, lista_caminos))))
+    guardar_cache(concepto_inicio, concepto_final, lista_caminos, language, 'BFS_v2')
+    return lista_caminos
 
 
 def imprimir_relaciones(lista_relaciones):
@@ -133,22 +170,44 @@ def imprimir_relaciones(lista_relaciones):
 def resultado_relaciones(lista_relaciones, retornar_lista = True):
     if not isinstance(lista_relaciones, list):
         lista_relaciones = []
-    lista = []
-    for relacion in lista_relaciones:
+    lista_salientes = []
+    lista_entrantes = []
+
+    flat_lista_relaciones = []
+
+    if len(lista_relaciones) >= 1 and isinstance(lista_relaciones[0], list):
+        for sub_lista in lista_relaciones:
+            for r in sub_lista:
+                flat_lista_relaciones.append(r)
+    else:
+        flat_lista_relaciones = lista_relaciones
+ 
+    for relacion in flat_lista_relaciones:
         if "relacion" in relacion:
-            lista.append(relacion["relacion"])
-    dict_relaciones = dict(Counter(lista))
+            if relacion["direccion"] == 1:
+                lista_salientes.append(relacion["relacion"])
+            else:
+                lista_entrantes.append(relacion["relacion"])
+    dict_relaciones_salientes = dict(Counter(lista_salientes))
+    dict_relaciones_entrantes = dict(Counter(lista_entrantes))
+
     for tipo_relacion in lista_todas_relaciones:
-        if tipo_relacion not in dict_relaciones.keys():
-            dict_relaciones[tipo_relacion] = 0
-    print(sorted(dict_relaciones))
+        if tipo_relacion not in dict_relaciones_salientes.keys():
+            dict_relaciones_salientes[tipo_relacion] = 0
+        if tipo_relacion not in dict_relaciones_entrantes.keys():
+            dict_relaciones_entrantes[tipo_relacion] = 0
+    
     if retornar_lista:
+        print(len(sorted(dict_relaciones_salientes)))
         lista_resultado = []
-        for relacion in sorted(dict_relaciones):
-            lista_resultado.append(dict_relaciones[relacion])
+        for relacion in sorted(dict_relaciones_salientes):
+            lista_resultado.append(dict_relaciones_salientes[relacion])
+        for relacion in sorted(dict_relaciones_entrantes):
+            lista_resultado.append(dict_relaciones_entrantes[relacion])
+        #print(lista_resultado)
         return lista_resultado
     else:
-        return dict_relaciones
+        return {"salientes": dict_relaciones_salientes, "entrantes": dict_relaciones_entrantes}
 
 
 def buscar_cache(concepto_inicio, concepto_final, language = 'en', tipo = "BFS"):
@@ -188,6 +247,10 @@ def guardar_cache(concepto_inicio, concepto_final, relacion, language = 'en', ti
         w.write(json.dumps(cache))
         w.close()
 
-#imprimir_relaciones(bfs_conceptnet('graphite', 'drawing'))
+
+
+#a = resultado_relaciones(bfs_conceptnet_v2('bedroom', 'bed'))
+#print(a)
+#print(len(a))
 
     
