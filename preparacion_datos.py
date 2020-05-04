@@ -19,7 +19,7 @@ def preparar_datos(archivo):
         bar.set_description(" Preparando conceptos " + tupla[0] + " y " + tupla[1] + " con " + tupla[2])
         rel_1 = resultado_relaciones(bfs_conceptnet_v2(tupla[0], tupla[2]))
         rel_2 = resultado_relaciones(bfs_conceptnet_v2(tupla[1], tupla[2]))
-        r = [tupla[0], tupla[1], tupla[2], sum(rel_1), sum(rel_2), rel_1, rel_2]
+        r = [tupla[0], tupla[1], tupla[2], rel_1, rel_2, int(tupla[3])]
         f.write(json.dumps(r) + "\n")
         f.flush()
         os.fsync(f)
@@ -29,7 +29,7 @@ def preparar_datos(archivo):
     return resultado
 
 
-preparar_datos("./data/test/test_triples.txt")
+preparar_datos("./data/test/ref/truth.txt")
 
 
 

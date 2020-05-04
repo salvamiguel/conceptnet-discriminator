@@ -3,14 +3,14 @@ from conceptnet_lite import Label, edges_between, RelationName
 from tqdm import tqdm
 from collections import Counter
 import os
-
+import numpy as np
 import json
 
 RUTA_BD = "./db/db_conceptnet.db"
 RUTA_CACHE = "./cache/cache.txt"
 conceptnet_lite.connect(RUTA_BD)
 
-lista_todas_relaciones = ['related_to', 'form_of', 'is_a', 'part_of', 'has_a','used_for', 'capable_of', 'at_location','causes',    'has_subevent',    'has_first_subevent',     'has_last_subevent',    'has_prerequisite',     'has_property',     'motivated_by_goal',     'obstructed_by',    'desires',    'created_by', 'synonym',    'antonym',    'distinct_from',    'derived_from',    'symbol_of',    'defined_as',    'manner_of',    'located_near',    'has_context',    'similar_to',    'etymologically_related_to',    'etymologically_derived_from',    'causes_desire',    'made_of',    'receives_action',    'external_url']
+lista_todas_relaciones = ['dbpedia/genus','not_has_property','not_desires','entails','instance_of', 'related_to', 'form_of', 'is_a', 'part_of', 'has_a','used_for', 'capable_of', 'at_location','causes', 'has_subevent', 'has_first_subevent', 'has_last_subevent', 'has_prerequisite',     'has_property',     'motivated_by_goal',     'obstructed_by',    'desires',    'created_by', 'synonym',    'antonym',    'distinct_from',    'derived_from',    'symbol_of',    'defined_as',    'manner_of',    'located_near',    'has_context',    'similar_to',    'etymologically_related_to',    'etymologically_derived_from',    'causes_desire',    'made_of',    'receives_action',    'external_url']
 
 def obtener_etiquetas(label, language='en'):
     """Obtiene las etiquetas correspondientes 
@@ -56,33 +56,39 @@ def obtener_relaciones_directas(c1, c2):
        relaciones.append(relacion.relation.name)
     return Counter(relaciones)
 
+
+
 def obtener_relaciones_salida(concepto, language='en'):
     try:
         concepto_obj = obtener_etiquetas(concepto, language)
     except:
         print("Concepto no encontrado " + concepto)
         return []
-    relaciones = []
-    for c in concepto_obj:
+    def iterar_conceptos(c):
         if c.edges_out:
-            for e in c.edges_out:
-                if e.end.language == c.language:
-                    relaciones.append({'concepto':e.end.text, 'relacion': e.relation.name, "direccion": 1})
-    return relaciones
+            return map(iterar_relaciones, c.edges_out)
+    def iterar_relaciones(e):
+        if str(e.end.language) == language:
+            return {'concepto': e.end.text, 'relacion': e.relation.name, "direccion": 1}
+    return [y for x in list(map(iterar_conceptos, concepto_obj)) if x is not None for y in x if y is not None]
  
+
+
 def obtener_relaciones_entrada(concepto, language = 'en'):
     try:
         concepto_obj = obtener_etiquetas(concepto, language)
     except:
         print("Concepto no encontrado " + concepto)
         return []
-    relaciones = []
-    for c in concepto_obj:
+    sol = []
+    def iterar_conceptos(c):
         if c.edges_in:
-            for e in c.edges_in:
-                if e.start.language == c.language:
-                    relaciones.append({'concepto':e.start.text, 'relacion': e.relation.name, "direccion": -1})
-    return relaciones
+            map(iterar_relaciones, c.edges_in)
+    def iterar_relaciones(e):
+        if str(e.start.language) == language:
+            sol.append({'concepto': e.start.text, 'relacion': e.relation.name, "direccion": -1})
+    return [y for x in list(map(iterar_conceptos, concepto_obj)) if x is not None for y in x if y is not None]
+
 
 def obtener_relaciones(concepto, language = 'en'):
     return obtener_relaciones_entrada(concepto, language) + obtener_relaciones_salida(concepto, language)
@@ -199,11 +205,11 @@ def resultado_relaciones(lista_relaciones, retornar_lista = True):
     
     if retornar_lista:
         print(len(sorted(dict_relaciones_salientes)))
-        lista_resultado = []
+        lista_resultado = [[],[]]
         for relacion in sorted(dict_relaciones_salientes):
-            lista_resultado.append(dict_relaciones_salientes[relacion])
+            lista_resultado[0].append(dict_relaciones_salientes[relacion])
         for relacion in sorted(dict_relaciones_entrantes):
-            lista_resultado.append(dict_relaciones_entrantes[relacion])
+            lista_resultado[1].append(dict_relaciones_entrantes[relacion])
         #print(lista_resultado)
         return lista_resultado
     else:
@@ -248,9 +254,15 @@ def guardar_cache(concepto_inicio, concepto_final, relacion, language = 'en', ti
         w.close()
 
 
-
-#a = resultado_relaciones(bfs_conceptnet_v2('bedroom', 'bed'))
+#print(obtener_relaciones("pencil"))
 #print(a)
-#print(len(a))
+
+#a = resultado_relaciones(bfs_conceptnet_v2('grapefruit', 'peel'), False)
+#print(a)
+#print(len(a["salientes"].keys()))
+#print(len(a["entrantes"].keys()))
+#for key in a["salientes"].keys():
+#    if key not in a["entrantes"].keys():
+#        print(key)
 
     
