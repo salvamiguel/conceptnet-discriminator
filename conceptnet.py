@@ -119,7 +119,7 @@ def bfs_conceptnet(concepto_inicio, concepto_final, max_iter = 100, language='en
                 cola.append(nuevo_camino)
             visitado.append(nodo)
 
-def bfs_conceptnet_v2(concepto_inicio, concepto_final, max_iter = 20, language='en'):
+def bfs_conceptnet_v2(concepto_inicio, concepto_final, max_iter = 100, language='en'):
     cache = buscar_cache(concepto_inicio, concepto_final, language, 'BFS_v2')
     lista_caminos = []
     if cache or (isinstance(cache, list) and len(cache) >= 0):
