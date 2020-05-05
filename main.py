@@ -25,17 +25,20 @@ def entrenar(archivo_procesado):
             print(len(linea[3][1]))
             return
         salida_1 = np.array(linea[3][0]).reshape(39,1)
-        entrada_1 = np.array(linea[3][1]).reshape(39, 1)
+        entrada_1 = np.array(linea[3][1]).reshape(1, 39)
         if len(linea[4][0]) is not 39 or len(linea[4][1]) is not 39:
             print(linea)
             print(len(linea[4][0]))
             print(len(linea[4][1]))
             return
-        salida_2 = np.array(linea[4][0]).reshape(1,39)
+        salida_2 = np.array(linea[4][0]).reshape(39,1)
         entrada_2 = np.array(linea[4][1]).reshape(1, 39)
-        img_salida = np.dot(salida_1, salida_2)
-        img_entrada = np.dot(entrada_1, entrada_2)
-        x.append([img_salida, img_entrada])
+        #img_salida = np.dot(salida_1, salida_2)
+        #img_entrada = np.dot(entrada_1, entrada_2)
+        img_1 = np.dot(salida_1, entrada_1)
+        img_2 = np.dot(salida_2, entrada_2)
+        
+        x.append([img_1, img_2])
     x = np.array(x)
     x = x.reshape(len(lines),39,39,2)
 
@@ -46,7 +49,7 @@ def entrenar(archivo_procesado):
     #create model
     model = Sequential()
     #add model layers
-    gn = 0
+    gn = 0.3
     model.add(Conv2D(8, kernel_size=3, activation='relu', input_shape=(39,39,2)))
     model.add(BN())
     model.add(GN(gn))
@@ -71,11 +74,11 @@ def entrenar(archivo_procesado):
     y_pred = model.predict(x)
     #print(y_pred)
     #print(y_pred.shape)
-    y_det = list(map(lambda x:np.sum(x), np.where(y_pred > 0.7, 1, 0)))
+    for threshold in np.arange(0.35,1,0.05):
+        y_det = list(map(lambda x: x[0] ^ x[1], np.where(y_pred > threshold, 1, 0)))
     #print(y.tolist())
     #print(y_det.tolist())
-
-    print(f1_score(y.tolist(), y_det))
+        print(f1_score(y.tolist(), y_det))
 
 a = entrenar("./resultados_parciales.txt")
 
