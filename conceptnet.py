@@ -2,6 +2,7 @@ import conceptnet_lite
 from conceptnet_lite import Label, edges_between, RelationName
 from tqdm import tqdm
 from collections import Counter
+from multiprocessing import Process, Queue, Lock
 import os
 import numpy as np
 import json
@@ -161,6 +162,45 @@ def bfs_conceptnet_v2(concepto_inicio, concepto_final, max_iter = 100, language=
     guardar_cache(concepto_inicio, concepto_final, lista_caminos, language, 'BFS_v2')
     return lista_caminos
 
+def bfs_conceptnet_v3(num_hilo, concepto_inicio, concepto_final, lock, max_iter = 100, language='en'):
+    cache = buscar_cache(concepto_inicio, concepto_final, language, 'BFS_v2')
+    lista_caminos = []
+    if cache or (isinstance(cache, list) and len(cache) >= 0):
+        return cache
+    cola = [[{"concepto":concepto_inicio}]]
+    visitado = []
+    ##bar = tqdm(total=max_iter, initial=0)
+    while cola and max_iter is not 0:
+        ##bar.update(1)
+        max_iter = max_iter - 1
+        if len(cola) == 0:
+            break
+        camino = cola.pop(0)
+        nodo = camino[-1]
+        #tqdm.write("Cola pendiente: " + str(cola))
+        print("\t[Hilo " + str(num_hilo) + "]: Buscando relaciones desde " + concepto_inicio + " en " + nodo["concepto"] + " hasta " + concepto_final)
+        if nodo["concepto"] == concepto_final:
+            #guardar_cache(concepto_inicio, concepto_final, camino)
+            lista_caminos.append(camino)
+        elif nodo not in visitado:
+            for vecino in obtener_relaciones(nodo["concepto"], language):
+                if vecino["concepto"] == concepto_final:
+                    camino.append(vecino)
+                    #guardar_cache(concepto_inicio, concepto_final, camino)
+                    lista_caminos.append(camino)
+                else:
+                    #print("\t->\tEncontrada: " + nodo["concepto"] + " " + vecino["relacion"] + " " + vecino["concepto"])
+                    nuevo_camino = list(camino)
+                    nuevo_camino.append(vecino)
+                    cola.append(nuevo_camino)
+            visitado.append(nodo)
+    lista_caminos = list(map(json.loads, set(map(json.dumps, lista_caminos))))
+    lock.acquire()
+    try:
+        guardar_cache(concepto_inicio, concepto_final, lista_caminos, language, 'BFS_v2')
+    finally:
+        lock.release()
+    return lista_caminos
 
 def imprimir_relaciones(lista_relaciones):
     if not isinstance(lista_relaciones, list) or len(lista_relaciones) == 0:
