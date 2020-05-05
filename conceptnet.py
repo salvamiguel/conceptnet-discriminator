@@ -2,7 +2,7 @@ import conceptnet_lite
 from conceptnet_lite import Label, edges_between, RelationName
 from tqdm import tqdm
 from collections import Counter
-from multiprocessing import Process, Queue, Lock
+from multiprocessing import Pool, Lock, Manager
 import os
 import numpy as np
 import json
@@ -178,7 +178,7 @@ def bfs_conceptnet_v3(num_hilo, concepto_inicio, concepto_final, lock, max_iter 
         camino = cola.pop(0)
         nodo = camino[-1]
         #tqdm.write("Cola pendiente: " + str(cola))
-        print("\t[Hilo " + str(num_hilo) + "]: Buscando relaciones desde " + concepto_inicio + " en " + nodo["concepto"] + " hasta " + concepto_final)
+        tqdm.write("\t[Hilo " + str(num_hilo) + "]: Buscando relaciones desde " + concepto_inicio + " en " + nodo["concepto"] + " hasta " + concepto_final)
         if nodo["concepto"] == concepto_final:
             #guardar_cache(concepto_inicio, concepto_final, camino)
             lista_caminos.append(camino)
@@ -244,7 +244,6 @@ def resultado_relaciones(lista_relaciones, retornar_lista = True):
             dict_relaciones_entrantes[tipo_relacion] = 0
     
     if retornar_lista:
-        print(len(sorted(dict_relaciones_salientes)))
         lista_resultado = [[],[]]
         for relacion in sorted(dict_relaciones_salientes):
             lista_resultado[0].append(dict_relaciones_salientes[relacion])
