@@ -162,44 +162,55 @@ def bfs_conceptnet_v2(concepto_inicio, concepto_final, max_iter = 100, language=
     guardar_cache(concepto_inicio, concepto_final, lista_caminos, language, 'BFS_v2')
     return lista_caminos
 
-def bfs_conceptnet_v3(num_hilo, concepto_inicio, concepto_final, lock, max_iter = 100, language='en'):
-    cache = buscar_cache(concepto_inicio, concepto_final, language, 'BFS_v2')
+def bfs_conceptnet_v3(concepto_inicio, concepto_final, cache, max_iter = 100, language='en'):
+    tipo = "BFS_v2"
+
+    if language in cache and tipo in cache[language] and concepto_inicio in cache[language][tipo] and concepto_final in cache[language][tipo][concepto_inicio]:
+            return cache[language][tipo][concepto_inicio][concepto_final]
+    #print(concepto_inicio)
     lista_caminos = []
-    if cache or (isinstance(cache, list) and len(cache) >= 0):
-        return cache
+
     cola = [[{"concepto":concepto_inicio}]]
     visitado = []
-    ##bar = tqdm(total=max_iter, initial=0)
     while cola and max_iter is not 0:
-        ##bar.update(1)
         max_iter = max_iter - 1
         if len(cola) == 0:
             break
         camino = cola.pop(0)
         nodo = camino[-1]
-        #tqdm.write("Cola pendiente: " + str(cola))
-        tqdm.write("\t[Hilo " + str(num_hilo) + "]: Buscando relaciones desde " + concepto_inicio + " en " + nodo["concepto"] + " hasta " + concepto_final)
         if nodo["concepto"] == concepto_final:
-            #guardar_cache(concepto_inicio, concepto_final, camino)
             lista_caminos.append(camino)
         elif nodo not in visitado:
+            tqdm.write("[Hilo "+str(os.getpid())+"]: Buscando en " + nodo["concepto"])
             for vecino in obtener_relaciones(nodo["concepto"], language):
+                #print(nodo["concepto"] not in cache[language][tipo])
+                #if nodo["concepto"] not in cache[language][tipo]:
+                #    cache[language][tipo][nodo["concepto"]] = {}
+                
+                # elif vecino["concepto"] not in cache[language][tipo][nodo["concepto"]]:
+                #     cache[language][tipo][nodo["concepto"]][vecino["concepto"]] = {vecino["concepto"]: [{"concepto":nodo["concepto"]}, vecino]}
+
                 if vecino["concepto"] == concepto_final:
                     camino.append(vecino)
-                    #guardar_cache(concepto_inicio, concepto_final, camino)
                     lista_caminos.append(camino)
                 else:
-                    #print("\t->\tEncontrada: " + nodo["concepto"] + " " + vecino["relacion"] + " " + vecino["concepto"])
                     nuevo_camino = list(camino)
                     nuevo_camino.append(vecino)
                     cola.append(nuevo_camino)
             visitado.append(nodo)
     lista_caminos = list(map(json.loads, set(map(json.dumps, lista_caminos))))
-    lock.acquire()
-    try:
-        guardar_cache(concepto_inicio, concepto_final, lista_caminos, language, 'BFS_v2')
-    finally:
-        lock.release()
+
+    tqdm.write("[Hilo "+str(os.getpid())+"]: Relaciones encontradas")
+    
+    if concepto_inicio not in cache[language][tipo]:
+        d = cache[language][tipo]
+        d[concepto_inicio] = {}
+        d[concepto_inicio][concepto_final] = lista_caminos
+        cache[language][tipo] = d
+    elif concepto_inicio not in cache[language][tipo][concepto_inicio]:
+        d = cache[language][tipo][concepto_inicio]
+        d[concepto_final] = lista_caminos
+        cache[language][tipo][concepto_inicio] = d
     return lista_caminos
 
 def imprimir_relaciones(lista_relaciones):

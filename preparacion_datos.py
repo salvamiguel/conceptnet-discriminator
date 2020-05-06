@@ -1,5 +1,6 @@
 from conceptnet import *
 from functools import partial
+import argparse
 
 RUTA_RESULTADOS_PARCIALES = "./resultados_parciales.txt"
 
@@ -31,29 +32,35 @@ def preparar_datos(archivo):
     return resultado
 
 
-def preparar(lock_cache, lock_salida, entrada):
+def preparar(lock_cache, lock_salida, cache, entrada):
     num_hilo = os.getpid()
     linea = entrada
     posicion = linea[0]
-    #tqdm.set_description("[Hilo " + str(num_hilo) + "]: Obtiene la linea " + str(posicion))
-    #tqdm.set_description("[Hilo " + str(num_hilo) + "]: Obtiene la linea " + str(posicion))
-    rel_1 = resultado_relaciones(bfs_conceptnet_v3(num_hilo, linea[1], linea[3], lock_cache))
-    rel_2 = resultado_relaciones(bfs_conceptnet_v3(num_hilo, linea[2], linea[3], lock_cache))
+
+    cache_c = cache
+
+    rel_1 = resultado_relaciones(bfs_conceptnet_v3(linea[1], linea[3], cache,20))
+    rel_2 = resultado_relaciones(bfs_conceptnet_v3(linea[2], linea[3], cache,20))
     r = [posicion, linea[1], linea[2], linea[3], rel_1, rel_2, int(linea[4])]
-    #salida.put([posicion]+r)
-    #tqdm.write("[Hilo " + str(num_hilo) + "]: Esperando lock para escribir")
+
+    #lock_cache.acquire()
+    #try:
+    #    w = open(RUTA_CACHE, "w")
+    #    w.write(json.dumps(cache.copy()))
+    #    w.close()
+    #finally:
+    #    lock_cache.release()
+
     lock_salida.acquire()
     try:
-        #tqdm.set_description("[Hilo " + str(num_hilo) + "]: Empieza a escribir")
         w = open(RUTA_RESULTADOS_PARCIALES, 'a+')
         w.write(json.dumps(r) + "\n")
         w.flush()
         os.fsync(w)
     finally:
         lock_salida.release()
-        #tqdm.update(1)
 
-def preparar_datos_hilos(archivo, num_hilos=False):
+def preparar_datos_hilos(archivo, num_saltos=100, num_hilos=False):
     if not num_hilos:
         num_hilos = os.cpu_count()
     tuplas = leer_palabras(archivo)
@@ -62,6 +69,10 @@ def preparar_datos_hilos(archivo, num_hilos=False):
     m = Manager()
     lock_cache = m.Lock()
     lock_salida = m.Lock()
+    f = open(RUTA_CACHE, "r")
+    cache = m.dict(json.loads(f.read()))
+    f.close()
+
     lineas = []
     #entrada = m.Queue()
     #salida = m.Queue()
@@ -71,7 +82,7 @@ def preparar_datos_hilos(archivo, num_hilos=False):
         lineas.append(l)
         pos = pos + 1
 
-    func = partial(preparar, lock_cache, lock_salida)
+    func = partial(preparar, lock_cache, lock_salida, cache)
 
     with tqdm(total=len(lineas)) as pbar:
             for i, _ in enumerate(pool.imap(func, lineas)):
@@ -92,7 +103,12 @@ def preparar_datos_hilos(archivo, num_hilos=False):
     #return list(salida.queue)
     
 
-    
+
+argparser = argparse.ArgumentParser()
+argparser.add_argument('-i', '--entrada', help='Ruta del archivo de entrada')
+argparser.add_argument('-s', '--salida', help='Ruta del archivo de salida')
+argparser.add_argument('-', '--epochs', help='Número de epochs', default=40)
+args = argparser.parse_args()
 
 
 
