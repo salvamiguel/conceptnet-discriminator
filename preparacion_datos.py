@@ -53,7 +53,9 @@ def preparar(lock_cache, lock_salida, entrada):
         lock_salida.release()
         #tqdm.update(1)
 
-def preparar_datos_hilos(archivo, num_hilos = 8):
+def preparar_datos_hilos(archivo, num_hilos=False):
+    if not num_hilos:
+        num_hilos = os.cpu_count()
     tuplas = leer_palabras(archivo)
     pos = 0
     pool = Pool(processes=num_hilos)
@@ -69,10 +71,12 @@ def preparar_datos_hilos(archivo, num_hilos = 8):
         lineas.append(l)
         pos = pos + 1
 
-    #tqdm(pos)
     func = partial(preparar, lock_cache, lock_salida)
 
-    pool.map(func, lineas)
+    with tqdm(total=len(lineas)) as pbar:
+            for i, _ in enumerate(pool.imap(func, lineas)):
+                pbar.update()
+
     pool.close()
     pool.join()
 

@@ -13,11 +13,20 @@ from keras.optimizers import *
 from keras.callbacks import *
 def entrenar(archivo_procesado):
     r = open(archivo_procesado, "r")
-    lines = r.readlines()
+    lineas = r.readlines()
+    palabras = []
+    for linea in lineas:
+        palabras.append(json.loads(linea))
+
+    palabras = sorted(palabras)
+    
+    for palabra in palabras:
+        palabra.pop(0)
+
     x = []
     y = []
-    for l in lines:
-        linea = json.loads(l)
+
+    for linea in palabras:
         y.append(linea[5])
         if len(linea[3][0]) is not 39 or len(linea[3][1]) is not 39:
             print(linea)
@@ -40,7 +49,7 @@ def entrenar(archivo_procesado):
         
         x.append([img_1, img_2])
     x = np.array(x)
-    x = x.reshape(len(lines),39,39,2)
+    x = x.reshape(len(palabras),39,39,2)
 
     y = np.array(y)
     #print(x.shape)
@@ -49,7 +58,7 @@ def entrenar(archivo_procesado):
     #create model
     model = Sequential()
     #add model layers
-    gn = 0.3
+    gn = 0
     model.add(Conv2D(8, kernel_size=3, activation='relu', input_shape=(39,39,2)))
     model.add(BN())
     model.add(GN(gn))
