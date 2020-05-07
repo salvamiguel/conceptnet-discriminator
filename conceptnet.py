@@ -6,12 +6,16 @@ from multiprocessing import Pool, Lock, Manager
 import os
 import numpy as np
 import json
+from pymongo import MongoClient
+
+
+
+
 
 RUTA_BD = "./db/db_conceptnet.db"
-RUTA_CACHE = "./cache/cache.txt"
 conceptnet_lite.connect(RUTA_BD)
 
-lista_todas_relaciones = ['dbpedia/genus','not_has_property','not_desires','entails','instance_of', 'related_to', 'form_of', 'is_a', 'part_of', 'has_a','used_for', 'capable_of', 'at_location','causes', 'has_subevent', 'has_first_subevent', 'has_last_subevent', 'has_prerequisite',     'has_property',     'motivated_by_goal',     'obstructed_by',    'desires',    'created_by', 'synonym',    'antonym',    'distinct_from',    'derived_from',    'symbol_of',    'defined_as',    'manner_of',    'located_near',    'has_context',    'similar_to',    'etymologically_related_to',    'etymologically_derived_from',    'causes_desire',    'made_of',    'receives_action',    'external_url']
+lista_todas_relaciones = ['dbpedia/genre', 'dbpedia/genus','not_has_property','not_desires','entails','instance_of', 'related_to', 'form_of', 'is_a', 'part_of', 'has_a','used_for', 'capable_of', 'at_location','causes', 'has_subevent', 'has_first_subevent', 'has_last_subevent', 'has_prerequisite',     'has_property',     'motivated_by_goal',     'obstructed_by',    'desires',    'created_by', 'synonym',    'antonym',    'distinct_from',    'derived_from',    'symbol_of',    'defined_as',    'manner_of',    'located_near',    'has_context',    'similar_to',    'etymologically_related_to',    'etymologically_derived_from',    'causes_desire',    'made_of',    'receives_action',    'external_url']
 
 def obtener_etiquetas(label, language='en'):
     """Obtiene las etiquetas correspondientes 
@@ -162,14 +166,23 @@ def bfs_conceptnet_v2(concepto_inicio, concepto_final, max_iter = 100, language=
     guardar_cache(concepto_inicio, concepto_final, lista_caminos, language, 'BFS_v2')
     return lista_caminos
 
-def bfs_conceptnet_v3(concepto_inicio, concepto_final, cache, max_iter = 100, language='en'):
-    tipo = "BFS_v2"
+def bfs_conceptnet_v3(concepto_inicio, concepto_final, max_iter = 100, language='en'):
+    cliente_mongo = MongoClient('mongodb://127.0.0.1:27017/')
+    db_c_cache = cliente_mongo.conceptnet.cache
+    tipo = "BFS_v3"
 
-    if language in cache and tipo in cache[language] and concepto_inicio in cache[language][tipo] and concepto_final in cache[language][tipo][concepto_inicio]:
-            return cache[language][tipo][concepto_inicio][concepto_final]
-    #print(concepto_inicio)
+    db_c_cache.find(
+        {"language": language,
+        "tipo": tipo,
+        "concepto_i": concepto_inicio,
+        "concepto_f": concepto_final
+        })
+    
+    
+
+
+
     lista_caminos = []
-
     cola = [[{"concepto":concepto_inicio}]]
     visitado = []
     while cola and max_iter is not 0:
@@ -183,13 +196,6 @@ def bfs_conceptnet_v3(concepto_inicio, concepto_final, cache, max_iter = 100, la
         elif nodo not in visitado:
             tqdm.write("[Hilo "+str(os.getpid())+"]: Buscando en " + nodo["concepto"])
             for vecino in obtener_relaciones(nodo["concepto"], language):
-                #print(nodo["concepto"] not in cache[language][tipo])
-                #if nodo["concepto"] not in cache[language][tipo]:
-                #    cache[language][tipo][nodo["concepto"]] = {}
-                
-                # elif vecino["concepto"] not in cache[language][tipo][nodo["concepto"]]:
-                #     cache[language][tipo][nodo["concepto"]][vecino["concepto"]] = {vecino["concepto"]: [{"concepto":nodo["concepto"]}, vecino]}
-
                 if vecino["concepto"] == concepto_final:
                     camino.append(vecino)
                     lista_caminos.append(camino)
@@ -199,18 +205,13 @@ def bfs_conceptnet_v3(concepto_inicio, concepto_final, cache, max_iter = 100, la
                     cola.append(nuevo_camino)
             visitado.append(nodo)
     lista_caminos = list(map(json.loads, set(map(json.dumps, lista_caminos))))
-
+    db_c_cache.insert_one(
+        {"language": language,
+        "tipo": tipo,
+        "concepto_i": concepto_inicio,
+        "concepto_f": concepto_final,
+        "relaciones": lista_caminos})
     tqdm.write("[Hilo "+str(os.getpid())+"]: Relaciones encontradas")
-    
-    if concepto_inicio not in cache[language][tipo]:
-        d = cache[language][tipo]
-        d[concepto_inicio] = {}
-        d[concepto_inicio][concepto_final] = lista_caminos
-        cache[language][tipo] = d
-    elif concepto_inicio not in cache[language][tipo][concepto_inicio]:
-        d = cache[language][tipo][concepto_inicio]
-        d[concepto_final] = lista_caminos
-        cache[language][tipo][concepto_inicio] = d
     return lista_caminos
 
 def imprimir_relaciones(lista_relaciones):
@@ -307,7 +308,7 @@ def guardar_cache(concepto_inicio, concepto_final, relacion, language = 'en', ti
 #print(obtener_relaciones("pencil"))
 #print(a)
 
-#a = resultado_relaciones(bfs_conceptnet_v2('grapefruit', 'peel'), False)
+#a = resultado_relaciones(bfs_conceptnet_v2('albums', 'music', 30), False)
 #print(a)
 #print(len(a["salientes"].keys()))
 #print(len(a["entrantes"].keys()))

@@ -12,6 +12,11 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.layers import GaussianNoise as GN
 from keras.optimizers import *
 from keras.callbacks import *
+from nltk.tokenize import sent_tokenize, word_tokenize 
+import warnings
+warnings.filterwarnings(action='ignore')
+import gensim 
+from gensim.models import Word2Vec 
 import argparse
 
 def entrenar(archivo_procesado, epochs=40):
@@ -23,28 +28,27 @@ def entrenar(archivo_procesado, epochs=40):
 
     palabras = sorted(palabras)
     
+    corpus = []
+
     for palabra in palabras:
         palabra.pop(0)
+        corpus.append(palabra[0])
+        corpus.append(palabra[1])
+        corpus.append(palabra[2])
 
+    model_w = gensim.models.Word2Vec(corpus, min_count = 1, size = 100, window = 5)
     x = []
     y = []
 
     for linea in palabras:
         y.append(linea[5])
-        if len(linea[3][0]) is not 39 or len(linea[3][1]) is not 39:
-            print(linea)
-            print(len(linea[3][0]))
-            print(len(linea[3][1]))
-            return
-        salida_1 = np.array(linea[3][0]).reshape(39,1)
-        entrada_1 = np.array(linea[3][1]).reshape(1, 39)
-        if len(linea[4][0]) is not 39 or len(linea[4][1]) is not 39:
-            print(linea)
-            print(len(linea[4][0]))
-            print(len(linea[4][1]))
-            return
-        salida_2 = np.array(linea[4][0]).reshape(39,1)
-        entrada_2 = np.array(linea[4][1]).reshape(1, 39)
+
+
+        salida_1 = np.array(linea[3][0]).reshape(40,1)
+        entrada_1 = np.array(linea[3][1]).reshape(1, 40)
+
+        salida_2 = np.array(linea[4][0]).reshape(40,1)
+        entrada_2 = np.array(linea[4][1]).reshape(1, 40)
         #img_salida = np.dot(salida_1, salida_2)
         #img_entrada = np.dot(entrada_1, entrada_2)
         img_1 = np.dot(salida_1, entrada_1)
@@ -52,7 +56,7 @@ def entrenar(archivo_procesado, epochs=40):
         
         x.append([img_1, img_2])
     x = np.array(x)
-    x = x.reshape(len(palabras),39,39,2)
+    x = x.reshape(len(palabras),40,40,2)
 
     y = np.array(y)
     #print(x.shape)
@@ -62,7 +66,7 @@ def entrenar(archivo_procesado, epochs=40):
     model = Sequential()
     #add model layers
     gn = 0.2
-    model.add(Conv2D(8, kernel_size=3, activation='relu', padding='valid', strides=(1,1), input_shape=(39,39,2)))
+    model.add(Conv2D(8, kernel_size=3, activation='relu', padding='valid', strides=(1,1), input_shape=(40,40,2)))
     model.add(BN())
     model.add(GN(gn))
     model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -78,14 +82,14 @@ def entrenar(archivo_procesado, epochs=40):
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Flatten())
     #model.add(Dense(288, activation='relu'))
-    model.add(Dense(2, activation='relu'))
+    model.add(Dense(2, activation='softmax'))
 
     model.summary()
     #return
     #opt = SGD(lr=0.01, decay=1e-6, momentum=0.75, nesterov=True)
-    opt = Nadam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=1e-7, schedule_decay=0.004)
+    #opt = Nadam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=1e-7, schedule_decay=0.004)
 
-    model.compile(optimizer=opt, loss='binary_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
     X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.15)
     y_train = to_categorical(y_train)
@@ -98,25 +102,26 @@ def entrenar(archivo_procesado, epochs=40):
                                             factor=0.5, 
                                             min_lr=0.0001)
                           
-    history= model.fit(X_train, y_train, 
-                            epochs=epochs,
-                            validation_data=(X_test, y_test),
-                            callbacks=[learning_rate_reduction],
-                            verbose=1)
+    #history= model.fit(X_train, y_train, 
+    #                        epochs=epochs,
+    #                        validation_data=(X_test, y_test),
+    #                        callbacks=[learning_rate_reduction],
+    #                        verbose=1)
     
-    plt.plot(history.history['acc'])
-    plt.plot(history.history['val_acc'])
-    plt.title('model accuracy')
-    plt.ylabel('accuracy')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'validation'], loc='upper left')
-    plt.show()
-    #model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=epochs)
+    #plt.plot(history.history['acc'])
+    #plt.plot(history.history['val_acc'])
+    #plt.title('model accuracy')
+    #plt.ylabel('accuracy')
+    #plt.xlabel('epoch')
+    #plt.legend(['train', 'validation'], loc='upper left')
+    #plt.show()
+    model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=epochs)
     y_pred = model.predict(x)
     #print(y_pred)
     #print(y_pred.shape)
     for threshold in np.arange(0.35,1,0.05):
-        y_det = list(map(lambda x: x[0] ^ x[1], np.where(y_pred > threshold, 1, 0)))
+        y_det = list(map(lambda x: x[0] + x[1], np.where(y_pred > threshold, 1, 0)))
+        #y_det = list(map(lambda x: round(x[0] * 10) ^ round(x[1] * 10), y_pred))
     #print(y.tolist())
     #print(y_det.tolist())
         print(f1_score(y.tolist(), y_det))

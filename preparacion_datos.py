@@ -32,24 +32,13 @@ def preparar_datos(archivo):
     return resultado
 
 
-def preparar(lock_cache, lock_salida, cache, entrada):
-    num_hilo = os.getpid()
-    linea = entrada
-    posicion = linea[0]
+def preparar(lock_salida, entrada):
+    posicion = entrada[0]
 
-    cache_c = cache
+    rel_1 = resultado_relaciones(bfs_conceptnet_v3(entrada[1], entrada[3], 50))
+    rel_2 = resultado_relaciones(bfs_conceptnet_v3(entrada[2], entrada[3], 50))
+    r = [posicion, entrada[1], entrada[2], entrada[3], rel_1, rel_2, int(entrada[4])]
 
-    rel_1 = resultado_relaciones(bfs_conceptnet_v3(linea[1], linea[3], cache,20))
-    rel_2 = resultado_relaciones(bfs_conceptnet_v3(linea[2], linea[3], cache,20))
-    r = [posicion, linea[1], linea[2], linea[3], rel_1, rel_2, int(linea[4])]
-
-    #lock_cache.acquire()
-    #try:
-    #    w = open(RUTA_CACHE, "w")
-    #    w.write(json.dumps(cache.copy()))
-    #    w.close()
-    #finally:
-    #    lock_cache.release()
 
     lock_salida.acquire()
     try:
@@ -67,11 +56,8 @@ def preparar_datos_hilos(archivo, num_saltos=100, num_hilos=False):
     pos = 0
     pool = Pool(processes=num_hilos)
     m = Manager()
-    lock_cache = m.Lock()
     lock_salida = m.Lock()
-    f = open(RUTA_CACHE, "r")
-    cache = m.dict(json.loads(f.read()))
-    f.close()
+
 
     lineas = []
     #entrada = m.Queue()
@@ -82,11 +68,13 @@ def preparar_datos_hilos(archivo, num_saltos=100, num_hilos=False):
         lineas.append(l)
         pos = pos + 1
 
-    func = partial(preparar, lock_cache, lock_salida, cache)
+    func = partial(preparar, lock_salida)
 
     with tqdm(total=len(lineas)) as pbar:
             for i, _ in enumerate(pool.imap(func, lineas)):
                 pbar.update()
+
+
 
     pool.close()
     pool.join()
