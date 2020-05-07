@@ -4,3 +4,5 @@ __pycache__/*
 .vscode/.ropeproject/config.py
 .vscode/.ropeproject/objectdb
 resultados_parciales.txt
+/*.txt
+/cache/cache.txt
