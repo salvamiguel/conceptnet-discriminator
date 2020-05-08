@@ -196,9 +196,7 @@ def bfs_conceptnet_v3(concepto_inicio, concepto_final, max_iter = 100, language=
             break
         camino = cola.pop(0)
         nodo = camino[-1]
-        if nodo["concepto"] == concepto_final:
-            lista_caminos.append(camino)
-        elif nodo not in visitado:
+        if nodo not in visitado:
             #tqdm.write("\t[Hilo "+str(os.getpid())+"]: Buscando en " + nodo["concepto"])
             for vecino in obtener_relaciones(nodo["concepto"], language):
                 db_c_cache.insert_one(
@@ -253,11 +251,12 @@ def resultado_relaciones(lista_relaciones, retornar_lista = True):
         flat_lista_relaciones = lista_relaciones
  
     for relacion in flat_lista_relaciones:
-        if "relacion" in relacion:
+        if "relacion" in relacion and relacion["relacion"] in lista_todas_relaciones:
             if relacion["direccion"] == 1:
                 lista_salientes.append(relacion["relacion"])
             else:
                 lista_entrantes.append(relacion["relacion"])
+                
     dict_relaciones_salientes = dict(Counter(lista_salientes))
     dict_relaciones_entrantes = dict(Counter(lista_entrantes))
 

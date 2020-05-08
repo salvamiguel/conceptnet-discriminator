@@ -32,11 +32,11 @@ def preparar_datos(archivo):
     return resultado
 
 
-def preparar(lock_salida, entrada):
+def preparar(lock_salida, num_saltos, entrada):
     posicion = entrada[0]
 
-    rel_1 = resultado_relaciones(bfs_conceptnet_v3(entrada[1], entrada[3], 50))
-    rel_2 = resultado_relaciones(bfs_conceptnet_v3(entrada[2], entrada[3], 50))
+    rel_1 = resultado_relaciones(bfs_conceptnet_v3(entrada[1], entrada[3], num_saltos))
+    rel_2 = resultado_relaciones(bfs_conceptnet_v3(entrada[2], entrada[3], num_saltos))
     r = [posicion, entrada[1], entrada[2], entrada[3], rel_1, rel_2, int(entrada[4])]
 
 
@@ -49,7 +49,7 @@ def preparar(lock_salida, entrada):
     finally:
         lock_salida.release()
 
-def preparar_datos_hilos(archivo, num_saltos=100, num_hilos=False):
+def preparar_datos_hilos(archivo, num_saltos=50, num_hilos=False):
     if not num_hilos:
         num_hilos = os.cpu_count()
     tuplas = leer_palabras(archivo)
@@ -68,7 +68,7 @@ def preparar_datos_hilos(archivo, num_saltos=100, num_hilos=False):
         lineas.append(l)
         pos = pos + 1
 
-    func = partial(preparar, lock_salida)
+    func = partial(preparar, lock_salida, num_saltos)
 
     with tqdm(total=len(lineas)) as pbar:
             for i, _ in enumerate(pool.imap(func, lineas)):
@@ -94,13 +94,11 @@ def preparar_datos_hilos(archivo, num_saltos=100, num_hilos=False):
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-i', '--entrada', help='Ruta del archivo de entrada')
-argparser.add_argument('-s', '--salida', help='Ruta del archivo de salida')
-argparser.add_argument('-', '--epochs', help='Número de epochs', default=40)
 args = argparser.parse_args()
 
 
 
-preparar_datos_hilos("./data/test/ref/truth.txt")
+preparar_datos_hilos(args.entrada)
 
 
 

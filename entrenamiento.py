@@ -18,8 +18,9 @@ warnings.filterwarnings(action='ignore')
 import gensim 
 from gensim.models import Word2Vec 
 import argparse
+import os
 
-def entrenar(archivo_procesado, epochs=41):
+def entrenar(archivo_procesado, epochs=50):
     r = open(archivo_procesado, "r")
     lineas = r.readlines()
     palabras = []
@@ -40,35 +41,45 @@ def entrenar(archivo_procesado, epochs=41):
     model_w = gensim.models.Word2Vec(corpus, min_count = 1, size = 100, window = 5)
     x = []
     y = []
-
     for linea in palabras:
         y.append(linea[5])
 
-        if len(linea[3][0]) is not 41 or len(linea[3][1]) is not 41:
+        if len(linea[3][0]) is not 50 or len(linea[3][1]) is not 50:
             print(linea)
             print(len(linea[3][0]))
             print(len(linea[3][1]))
             return
 
-        salida_1 = np.array(linea[3][0]).reshape(41,1)
-        entrada_1 = np.array(linea[3][1]).reshape(1, 41)
+        salida_1 = np.array(linea[3][0]).reshape(50,1)
+        entrada_1 = np.array(linea[3][1]).reshape(1, 50)
 
-        if len(linea[4][0]) is not 41 or len(linea[4][1]) is not 41:
+        if len(linea[4][0]) is not 50 or len(linea[4][1]) is not 50:
             print(linea)
             print(len(linea[4][0]))
             print(len(linea[4][1]))
             return
 
-        salida_2 = np.array(linea[4][0]).reshape(41,1)
-        entrada_2 = np.array(linea[4][1]).reshape(1, 41)
+        salida_2 = np.array(linea[4][0]).reshape(50,1)
+        entrada_2 = np.array(linea[4][1]).reshape(1, 50)
+
+        salida_1 = salida_1 + np.ones(salida_1.shape)
+        salida_2 = salida_2 + np.ones(salida_2.shape)
+
+        entrada_1 = entrada_1 + np.ones(entrada_1.shape)
+        entrada_2 = entrada_2 + np.ones(entrada_2.shape)
+
         #img_salida = np.dot(salida_1, salida_2)
         #img_entrada = np.dot(entrada_1, entrada_2)
         img_1 = np.dot(salida_1, entrada_1)
         img_2 = np.dot(salida_2, entrada_2)
-        
+        max_ = np.amax([img_1, img_2])
+        img_1 /= max_
+        img_2 /= max_
+
+
         x.append([img_1, img_2])
     x = np.array(x)
-    x = x.reshape(len(palabras),41,41,2)
+    x = x.reshape(len(palabras),50,50,2)
 
     y = np.array(y)
     #print(x.shape)
@@ -77,31 +88,33 @@ def entrenar(archivo_procesado, epochs=41):
     #create model
     model = Sequential()
     #add model layers
-    gn = 0.2
-    model.add(Conv2D(8, kernel_size=3, activation='relu', padding='valid', strides=(1,1), input_shape=(41,41,2)))
+    gn = 0
+    model.add(Conv2D(16, kernel_size=3, activation='relu', padding='valid', strides=(1,1), input_shape=(50,50,2)))
     model.add(BN())
     model.add(GN(gn))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(16, kernel_size=3, activation='relu', padding='valid', strides=(1,1)))    
+    model.add(Conv2D(32, kernel_size=3, activation='relu', padding='valid', strides=(1,1)))    
+    model.add(BN())
+    model.add(GN(gn))
+    model.add(Conv2D(64, kernel_size=3, activation='relu', padding='valid', strides=(1,1)))
     model.add(BN())
     model.add(GN(gn))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(32, kernel_size=3, activation='relu', padding='same'))
-    model.add(BN())
-    model.add(GN(gn))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(64, kernel_size=3, activation='relu', padding='same'))
+    model.add(Conv2D(128, kernel_size=3, activation='relu', padding='valid', strides=(1,1)))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Flatten())
-    #model.add(Dense(288, activation='relu'))
+    model.add(Dense(1024, activation='relu'))
+    model.add(Dense(512, activation='relu'))
     model.add(Dense(2, activation='softmax'))
 
     model.summary()
-    #return
+    
     #opt = SGD(lr=0.01, decay=1e-6, momentum=0.75, nesterov=True)
-    #opt = Nadam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=1e-7, schedule_decay=0.004)
-
-    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    #opt = Nadam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-7, schedule_decay=0.004)
+    #opt = rmsprop(lr=0.001,decay=1e-6)
+    opt = Adadelta(learning_rate=0.001, rho=0.95, epsilon=1e-07)
+    #opt = Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-06, decay=0.0)
+    model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['acc'])
 
     X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.15)
     y_train = to_categorical(y_train)
@@ -109,30 +122,35 @@ def entrenar(archivo_procesado, epochs=41):
 
     learning_rate_reduction = ReduceLROnPlateau(monitor='val_loss',
                                             mode='min',
-                                            patience=2, 
+                                            patience=5, 
                                             verbose=1, 
                                             factor=0.5, 
                                             min_lr=0.0001)
                           
-    #history= model.fit(X_train, y_train, 
-    #                        epochs=epochs,
-    #                        validation_data=(X_test, y_test),
-    #                        callbacks=[learning_rate_reduction],
-    #                        verbose=1)
+    history= model.fit(X_train, y_train, 
+                            epochs=int(epochs),
+                            validation_data=(X_test, y_test),
+                            callbacks=[learning_rate_reduction],
+                            verbose=1)
     
-    #plt.plot(history.history['acc'])
-    #plt.plot(history.history['val_acc'])
-    #plt.title('model accuracy')
-    #plt.ylabel('accuracy')
-    #plt.xlabel('epoch')
-    #plt.legend(['train', 'validation'], loc='upper left')
-    #plt.show()
-    model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=epochs)
+    model.save(os.path.join(".", "Conceptnet.h5"))
+    model.save_weights(os.path.join(".", 'FINAL_WEIGHTS.hdf5'), overwrite=True)
+
+    plt.plot(history.history['acc'])
+    plt.plot(history.history['val_acc'])
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('model accuracy')
+    plt.ylabel('accuracy')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'validation', 'loss', 'val_loss'], loc='upper left')
+    plt.show()
+    #model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=epochs)
     y_pred = model.predict(x)
     #print(y_pred)
     #print(y_pred.shape)
     for threshold in np.arange(0.35,1,0.05):
-        y_det = list(map(lambda x: x[0] + x[1], np.where(y_pred > threshold, 1, 0)))
+        y_det = list(map(lambda x: x[0] ^ x[1], np.where(y_pred > threshold, 1, 0)))
         #y_det = list(map(lambda x: round(x[0] * 10) ^ round(x[1] * 10), y_pred))
     #print(y.tolist())
     #print(y_det.tolist())
@@ -141,11 +159,20 @@ def entrenar(archivo_procesado, epochs=41):
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-i', '--entrada', help='Ruta del archivo de entrada')
 #argparser.add_argument('-s', '--salida', help='Nombre de la población')
-argparser.add_argument('-e', '--epochs', help='Número de epochs', default=41)
+argparser.add_argument('-e', '--epochs', help='Número de epochs', default=50)
 args = argparser.parse_args()
 
 entrenar(args.entrada, args.epochs)
 
+
+
+# load weights
+#print("Preload weights...")
+## load weights
+#filepath="./checkpoints/"+params['FINAL_WEIGHTS_PATH']
+#exists = os.path.isfile(filepath)
+#if exists:
+#    model.load_weights(filepath)
 
 
 
