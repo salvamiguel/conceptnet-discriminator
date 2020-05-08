@@ -1,0 +1,9 @@
+conceptnet_lite
+tqdm
+numpy
+pymongo
+matplotlib
+keras
+sklearn
+gensim
+nltk
