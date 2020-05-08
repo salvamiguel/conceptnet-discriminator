@@ -11,11 +11,12 @@ from pymongo import MongoClient
 
 
 
+RUTA_CACHE = "./cache/cache.txt"
 
 RUTA_BD = "./db/db_conceptnet.db"
 conceptnet_lite.connect(RUTA_BD)
 
-lista_todas_relaciones = ['dbpedia/genre', 'dbpedia/genus','not_has_property','not_desires','entails','instance_of', 'related_to', 'form_of', 'is_a', 'part_of', 'has_a','used_for', 'capable_of', 'at_location','causes', 'has_subevent', 'has_first_subevent', 'has_last_subevent', 'has_prerequisite',     'has_property',     'motivated_by_goal',     'obstructed_by',    'desires',    'created_by', 'synonym',    'antonym',    'distinct_from',    'derived_from',    'symbol_of',    'defined_as',    'manner_of',    'located_near',    'has_context',    'similar_to',    'etymologically_related_to',    'etymologically_derived_from',    'causes_desire',    'made_of',    'receives_action',    'external_url']
+lista_todas_relaciones = ['antonym','at_location','capable_of','causes','causes_desire','created_by','defined_as','derived_from','desires','distinct_from','entails','etymologically_derived_from','etymologically_related_to','external_url','form_of','has_a','has_context','has_first_subevent','has_last_subevent','has_prerequisite','has_property','has_subevent','instance_of','is_a','located_near','made_of','manner_of','motivated_by_goal','not_capable_of','not_desires','not_has_property','not_used_for','obstructed_by','part_of','receives_action','related_to','similar_to','symbol_of','synonym','used_for','dbpedia/capital','dbpedia/field','dbpedia/genre','dbpedia/genus','dbpedia/influenced_by','dbpedia/known_for','dbpedia/language','dbpedia/leader','dbpedia/occupation','dbpedia/product']
 
 def obtener_etiquetas(label, language='en'):
     """Obtiene las etiquetas correspondientes 
@@ -171,18 +172,22 @@ def bfs_conceptnet_v3(concepto_inicio, concepto_final, max_iter = 100, language=
     db_c_cache = cliente_mongo.conceptnet.cache
     tipo = "BFS_v3"
 
-    db_c_cache.find(
+    cursor = db_c_cache.find(
         {"language": language,
         "tipo": tipo,
         "concepto_i": concepto_inicio,
         "concepto_f": concepto_final
         })
     
-    
-
-
-
     lista_caminos = []
+    
+    for r in cursor:
+        lista_caminos = lista_caminos + r["relaciones"]
+
+    if len(lista_caminos) > 0 or cursor.count() > 0:
+        #tqdm.write("[Hilo "+str(os.getpid())+"]: Relaciones encontradas en cache")
+        return lista_caminos    
+
     cola = [[{"concepto":concepto_inicio}]]
     visitado = []
     while cola and max_iter is not 0:
@@ -194,8 +199,15 @@ def bfs_conceptnet_v3(concepto_inicio, concepto_final, max_iter = 100, language=
         if nodo["concepto"] == concepto_final:
             lista_caminos.append(camino)
         elif nodo not in visitado:
-            tqdm.write("[Hilo "+str(os.getpid())+"]: Buscando en " + nodo["concepto"])
+            #tqdm.write("\t[Hilo "+str(os.getpid())+"]: Buscando en " + nodo["concepto"])
             for vecino in obtener_relaciones(nodo["concepto"], language):
+                db_c_cache.insert_one(
+                    {"language": language,
+                    "tipo": tipo,
+                    "concepto_i": nodo["concepto"],
+                    "concepto_f": vecino["concepto"],
+                    "relaciones": [[{"concepto": nodo["concepto"]}, {"concepto": vecino["concepto"], "relacion": vecino["concepto"], "direccion": vecino["direccion"]}]]
+                    })
                 if vecino["concepto"] == concepto_final:
                     camino.append(vecino)
                     lista_caminos.append(camino)
@@ -211,7 +223,7 @@ def bfs_conceptnet_v3(concepto_inicio, concepto_final, max_iter = 100, language=
         "concepto_i": concepto_inicio,
         "concepto_f": concepto_final,
         "relaciones": lista_caminos})
-    tqdm.write("[Hilo "+str(os.getpid())+"]: Relaciones encontradas")
+    #tqdm.write("[Hilo "+str(os.getpid())+"]: Relaciones encontradas")
     return lista_caminos
 
 def imprimir_relaciones(lista_relaciones):
@@ -308,9 +320,9 @@ def guardar_cache(concepto_inicio, concepto_final, relacion, language = 'en', ti
 #print(obtener_relaciones("pencil"))
 #print(a)
 
-#a = resultado_relaciones(bfs_conceptnet_v2('albums', 'music', 30), False)
-#print(a)
+#a = resultado_relaciones(bfs_conceptnet_v2('psalms', 'sing', 30), False)
 #print(len(a["salientes"].keys()))
+#print(a)
 #print(len(a["entrantes"].keys()))
 #for key in a["salientes"].keys():
 #    if key not in a["entrantes"].keys():

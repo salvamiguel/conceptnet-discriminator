@@ -19,7 +19,7 @@ import gensim
 from gensim.models import Word2Vec 
 import argparse
 
-def entrenar(archivo_procesado, epochs=40):
+def entrenar(archivo_procesado, epochs=41):
     r = open(archivo_procesado, "r")
     lineas = r.readlines()
     palabras = []
@@ -35,6 +35,7 @@ def entrenar(archivo_procesado, epochs=40):
         corpus.append(palabra[0])
         corpus.append(palabra[1])
         corpus.append(palabra[2])
+        
 
     model_w = gensim.models.Word2Vec(corpus, min_count = 1, size = 100, window = 5)
     x = []
@@ -43,12 +44,23 @@ def entrenar(archivo_procesado, epochs=40):
     for linea in palabras:
         y.append(linea[5])
 
+        if len(linea[3][0]) is not 41 or len(linea[3][1]) is not 41:
+            print(linea)
+            print(len(linea[3][0]))
+            print(len(linea[3][1]))
+            return
 
-        salida_1 = np.array(linea[3][0]).reshape(40,1)
-        entrada_1 = np.array(linea[3][1]).reshape(1, 40)
+        salida_1 = np.array(linea[3][0]).reshape(41,1)
+        entrada_1 = np.array(linea[3][1]).reshape(1, 41)
 
-        salida_2 = np.array(linea[4][0]).reshape(40,1)
-        entrada_2 = np.array(linea[4][1]).reshape(1, 40)
+        if len(linea[4][0]) is not 41 or len(linea[4][1]) is not 41:
+            print(linea)
+            print(len(linea[4][0]))
+            print(len(linea[4][1]))
+            return
+
+        salida_2 = np.array(linea[4][0]).reshape(41,1)
+        entrada_2 = np.array(linea[4][1]).reshape(1, 41)
         #img_salida = np.dot(salida_1, salida_2)
         #img_entrada = np.dot(entrada_1, entrada_2)
         img_1 = np.dot(salida_1, entrada_1)
@@ -56,7 +68,7 @@ def entrenar(archivo_procesado, epochs=40):
         
         x.append([img_1, img_2])
     x = np.array(x)
-    x = x.reshape(len(palabras),40,40,2)
+    x = x.reshape(len(palabras),41,41,2)
 
     y = np.array(y)
     #print(x.shape)
@@ -66,7 +78,7 @@ def entrenar(archivo_procesado, epochs=40):
     model = Sequential()
     #add model layers
     gn = 0.2
-    model.add(Conv2D(8, kernel_size=3, activation='relu', padding='valid', strides=(1,1), input_shape=(40,40,2)))
+    model.add(Conv2D(8, kernel_size=3, activation='relu', padding='valid', strides=(1,1), input_shape=(41,41,2)))
     model.add(BN())
     model.add(GN(gn))
     model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -129,7 +141,7 @@ def entrenar(archivo_procesado, epochs=40):
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-i', '--entrada', help='Ruta del archivo de entrada')
 #argparser.add_argument('-s', '--salida', help='Nombre de la población')
-argparser.add_argument('-e', '--epochs', help='Número de epochs', default=40)
+argparser.add_argument('-e', '--epochs', help='Número de epochs', default=41)
 args = argparser.parse_args()
 
 entrenar(args.entrada, args.epochs)
