@@ -3,25 +3,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense, Conv2D, Flatten, MaxPooling2D
-from sklearn.model_selection import train_test_split
-from keras.utils.np_utils import to_categorical
-from sklearn.metrics import f1_score
-from keras.layers import Dense, Dropout, Activation, Flatten
+from keras.layers import GaussianNoise as GN, Dense, Dropout, Activation, Flatten
 from keras.layers.normalization import BatchNormalization as BN
-from keras.preprocessing.image import ImageDataGenerator
-from keras.layers import GaussianNoise as GN
 from keras.optimizers import *
 from keras.callbacks import *
-from nltk.tokenize import sent_tokenize, word_tokenize 
-import warnings
-warnings.filterwarnings(action='ignore')
+from keras.utils.np_utils import to_categorical
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score
+from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.corpus import brown
 import gensim 
-from gensim.models import Word2Vec 
+from gensim.models import Word2Vec, KeyedVectors
 import argparse
 import os
 
-def entrenar(archivo_procesado, epochs=50):
-    r = open(archivo_procesado, "r")
+def train(digested_file_path, epochs=50, path_embeddings = 'pre-trained/GoogleNews-vectors-negative300.bin.gz'):
+    r = open(digested_file_path, "r")
     lineas = r.readlines()
     palabras = []
     for linea in lineas:
@@ -36,13 +33,23 @@ def entrenar(archivo_procesado, epochs=50):
         corpus.append(palabra[0])
         corpus.append(palabra[1])
         corpus.append(palabra[2])
-        
+       
+    
 
-    model_w = gensim.models.Word2Vec(corpus, min_count = 1, size = 100, window = 5)
+    print("Loading wordembeddings model")
+    if os.path.isfile(path_embeddings):
+        m_embedding = KeyedVectors.load_word2vec_format(path_embeddings, binary=True)
+    else:
+        m_embedding = Word2Vec(brown.sents())
+        m_embedding.save('pre-trained/' + digested_file_path.replace("/", "_") + ".embedding")
+    
+
     x = []
     y = []
     for linea in palabras:
         y.append(linea[5])
+
+        print("Reading " + str(linea[0]) + ", " + str(linea[1]) + ", " + str(linea[2]))
 
         if len(linea[3][0]) is not 50 or len(linea[3][1]) is not 50:
             print(linea)
@@ -68,13 +75,20 @@ def entrenar(archivo_procesado, epochs=50):
         entrada_1 = entrada_1 + np.ones(entrada_1.shape)
         entrada_2 = entrada_2 + np.ones(entrada_2.shape)
 
-        #img_salida = np.dot(salida_1, salida_2)
-        #img_entrada = np.dot(entrada_1, entrada_2)
-        img_1 = np.dot(salida_1, entrada_1)
-        img_2 = np.dot(salida_2, entrada_2)
-        max_ = np.amax([img_1, img_2])
-        img_1 /= max_
-        img_2 /= max_
+        try:
+            similarity_1 = m_embedding.similarity(linea[0], linea[2])
+        except:
+            similarity_1 = 0.2
+        try:
+            similarity_2 = m_embedding.similarity(linea[1], linea[2])
+        except:
+            similarity_1 = 0.2
+    
+        img_1 = np.dot(salida_1, entrada_1) * similarity_1
+        img_2 = np.dot(salida_2, entrada_2) * similarity_2
+        #max_ = np.amax([img_1, img_2])
+        #img_1 /= max_
+        #img_2 /= max_
 
 
         x.append([img_1, img_2])
@@ -133,8 +147,8 @@ def entrenar(archivo_procesado, epochs=50):
                             callbacks=[learning_rate_reduction],
                             verbose=1)
     
-    model.save(os.path.join(".", "Conceptnet.h5"))
-    model.save_weights(os.path.join(".", 'FINAL_WEIGHTS.hdf5'), overwrite=True)
+    model.save(os.path.join(".", "pre-trained/Conceptnet.h5"))
+    model.save_weights(os.path.join(".", 'pre-trained/FINAL_WEIGHTS.hdf5'), overwrite=True)
 
     plt.plot(history.history['acc'])
     plt.plot(history.history['val_acc'])
@@ -157,12 +171,11 @@ def entrenar(archivo_procesado, epochs=50):
         print(f1_score(y.tolist(), y_det))
 
 argparser = argparse.ArgumentParser()
-argparser.add_argument('-i', '--entrada', help='Ruta del archivo de entrada')
-#argparser.add_argument('-s', '--salida', help='Nombre de la población')
-argparser.add_argument('-e', '--epochs', help='Número de epochs', default=50)
+argparser.add_argument('-i', '--input', help='Path to digested file. // Ruta del archivo de entrada.')
+argparser.add_argument('-e', '--epochs', help='Number of epochs. // Número de epochs', default=50)
 args = argparser.parse_args()
 
-entrenar(args.entrada, args.epochs)
+train(args.input, args.epochs)
 
 
 

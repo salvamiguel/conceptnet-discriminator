@@ -20,8 +20,8 @@ def preparar_datos(archivo):
     f = open(RUTA_RESULTADOS_PARCIALES, "a+")
     for tupla in bar:
         bar.set_description(" Preparando conceptos " + tupla[0] + " y " + tupla[1] + " con " + tupla[2])
-        rel_1 = resultado_relaciones(bfs_conceptnet_v2(tupla[0], tupla[2]))
-        rel_2 = resultado_relaciones(bfs_conceptnet_v2(tupla[1], tupla[2]))
+        rel_1 = calculate_result(bfs_conceptnet_v2(tupla[0], tupla[2]))
+        rel_2 = calculate_result(bfs_conceptnet_v2(tupla[1], tupla[2]))
         r = [tupla[0], tupla[1], tupla[2], rel_1, rel_2, int(tupla[3])]
         f.write(json.dumps(r) + "\n")
         f.flush()
@@ -35,8 +35,8 @@ def preparar_datos(archivo):
 def preparar(lock_salida, num_saltos, entrada):
     posicion = entrada[0]
 
-    rel_1 = resultado_relaciones(bfs_conceptnet_v3(entrada[1], entrada[3], num_saltos))
-    rel_2 = resultado_relaciones(bfs_conceptnet_v3(entrada[2], entrada[3], num_saltos))
+    rel_1 = calculate_result(bfs_conceptnet_v3(entrada[1], entrada[3], num_saltos))
+    rel_2 = calculate_result(bfs_conceptnet_v3(entrada[2], entrada[3], num_saltos))
     r = [posicion, entrada[1], entrada[2], entrada[3], rel_1, rel_2, int(entrada[4])]
 
 
