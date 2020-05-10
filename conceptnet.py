@@ -36,7 +36,7 @@ def get_labels(word, language='en'):
     Returns:
         peewee.ModelSelect -- List of labels matching // Array de labels encontrados
     """
-    return Label.get(text = word, language = language)
+    return Label.get(text=word, language=language)
     
 def get_concept(word, language='en'):
     """
@@ -101,13 +101,14 @@ def get_out_relations(word, language='en', min_cosine = 0):
         if c.edges_out:
             return map(iterar_relaciones, c.edges_out)
     def iterar_relaciones(e):
-        try:
-            cosine = m_embedding.similarity(word, e.end.text)
-        except:
-            cosine = 0.2
-        print("Encontrado " + e.end.text + " con " + cosine)
-        if str(e.end.language) == language and cosine > min_cosine:
-            return {'concepto': e.end.text, 'relacion': e.relation.name, "direccion": 1}
+        if str(e.end.language) == language:
+            try:
+                cosine = m_embedding.similarity(word, e.end.text)
+            except:
+                cosine = 0.2
+            if cosine > min_cosine:
+                #print("Encontrado " + str(e.end.text) + " con " + str(cosine))
+                return {'concepto': e.end.text, 'relacion': e.relation.name, "direccion": 1}
     return [y for x in list(map(iterar_conceptos, concepto_obj)) if x is not None for y in x if y is not None]
  
 
@@ -134,13 +135,14 @@ def get_in_relations(word, language='en', min_cosine = 0):
         if c.edges_in:
             map(iterar_relaciones, c.edges_in)
     def iterar_relaciones(e):
-        try:
-            cosine = m_embedding.similarity(word, e.start.text)
-        except:
-            cosine = 0.2
-        print("Encontrado " + e.start.text + " con " + cosine)
-        if str(e.start.language) == language and cosine > min_cosine:
-            sol.append({'concepto': e.start.text, 'relacion': e.relation.name, "direccion": -1})
+        if str(e.start.language) == language:
+            try:
+                cosine = m_embedding.similarity(word, e.start.text)
+            except:
+                cosine = 0.2
+            if cosine > min_cosine:
+                #print("Encontrado " + str(e.start.text) + " con " + str(cosine))
+                sol.append({'concepto': e.start.text, 'relacion': e.relation.name, "direccion": -1})
     return [y for x in list(map(iterar_conceptos, concepto_obj)) if x is not None for y in x if y is not None]
 
 
@@ -148,7 +150,7 @@ def get_relations(word, language = 'en', min_cosine = 0):
     return get_in_relations(word, language, min_cosine) + get_out_relations(word, language, min_cosine)
 
 
-def calculate_result(relations_list, retornar_lista = True):
+def calculate_result(relations_list):
     if not isinstance(relations_list, list):
         relations_list = []
     lista_salientes = []
@@ -156,45 +158,33 @@ def calculate_result(relations_list, retornar_lista = True):
     flat_lista_relaciones = []
     if len(relations_list) >= 1 and isinstance(relations_list[0], list):
         for sub_lista in relations_list:
-            prof = 1
+            prof = 0
             for r in sub_lista:
                 r["prof"] = prof
                 flat_lista_relaciones.append(r)
                 prof = prof + 1
 
-    else:
-        flat_lista_relaciones = relations_list
- 
+    dict_relaciones_salientes = {}
+    dict_relaciones_entrantes = {}
+
+    for tipo_relacion in sorted(lista_todas_relaciones):
+        dict_relaciones_salientes[tipo_relacion] = 0
+        dict_relaciones_entrantes[tipo_relacion] = 0
+
+   
     for relacion in flat_lista_relaciones:
         if "relacion" in relacion and relacion["relacion"] in lista_todas_relaciones:
             if relacion["direccion"] == 1:
-                lista_salientes.append(relacion["relacion"])
+                dict_relaciones_salientes[relacion["relacion"]] = dict_relaciones_salientes[relacion["relacion"]] + 1 / int(relacion["prof"])
             else:
-                lista_entrantes.append(relacion["relacion"])
-                
-    dict_relaciones_salientes = dict(Counter(lista_salientes))
-    dict_relaciones_entrantes = dict(Counter(lista_entrantes))
-
-    for tipo_relacion in lista_todas_relaciones:
-        if tipo_relacion not in dict_relaciones_salientes.keys():
-            dict_relaciones_salientes[tipo_relacion] = 0
-        if tipo_relacion not in dict_relaciones_entrantes.keys():
-            dict_relaciones_entrantes[tipo_relacion] = 0
-    
-    if retornar_lista:
-        lista_resultado = [[],[]]
-        for relacion in sorted(dict_relaciones_salientes):
-            lista_resultado[0].append(dict_relaciones_salientes[relacion])
-        for relacion in sorted(dict_relaciones_entrantes):
-            lista_resultado[1].append(dict_relaciones_entrantes[relacion])
-        #print(lista_resultado)
-        return lista_resultado
-    else:
-        return {"salientes": dict_relaciones_salientes, "entrantes": dict_relaciones_entrantes}
+                dict_relaciones_entrantes[relacion["relacion"]] = dict_relaciones_salientes[relacion["relacion"]] + 1 / int(relacion["prof"])
+     
+    return [list(dict_relaciones_salientes.values()), list(dict_relaciones_entrantes.values())]
 
 
 
-def a_star_threads(w1, w2, h_fun="adaptative", language='en', start_cosine = 0.8):
+
+def a_star_threads(w1, w2, h_fun="adaptative", language='en', start_cosine = 0.1):
     cosine = start_cosine
     result = []  
     try:
@@ -207,19 +197,14 @@ def a_star_threads(w1, w2, h_fun="adaptative", language='en', start_cosine = 0.8
             prof = 1
             cosines = [start_cosine, start_cosine]
             while queue:
-                print(queue)
+                #print("Profundidad " + str(prof))
                 path = queue.pop(0)
                 node = path[-1]
-                print(node)
-                print("Ajustando el cosine a " + str(cosines[prof]) + ", profundidad " + str(prof))
                 if node not in visited:
-                    print("ENTRO")
-                    for v in get_relations(word=node["concepto"], language=language, min_cosine=cosines[prof]):
-                        print(v)
+                    for v in get_relations(word=node["concepto"], language=language, min_cosine=cosine):
                         if v["concepto"] == w2:
                             path.append(v)
                             result.append(path)
-                            return result
                         else:
                             new_path = list(path)
                             new_path.append(v)
@@ -228,11 +213,15 @@ def a_star_threads(w1, w2, h_fun="adaptative", language='en', start_cosine = 0.8
                                 prof = len(path)
                                 if h_fun == "adaptative":
                                     try:
-                                        cosines[prof] = max(m_embedding.similarity(w1, path[-1]["concepto"]), cosines[prof-1])
+                                        cosines[prof].append(m_embedding.similarity(w1, v["concepto"]))
+                                        cosine = np.mean(cosines)
                                     except:
-                                        cosines[prof] = min((cosine + 0.1, 0.95))
+                                        cosine = min((cosine + 0.1, 0.95))
                                 elif h_fun == "progressive":
-                                    cosines[prof] = min((cosine + 0.1, 0.95))
+                                    cosine = min((cosine + 0.1, 0.95))
+                                print("Ajustando el cosine a " + str(cosine) + ", profundidad " + str(prof))
+                    if len(result) > 0 or prof > 4:
+                        return result
                     visited.append(node)
             return result
         else:

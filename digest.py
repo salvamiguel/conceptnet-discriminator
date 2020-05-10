@@ -64,7 +64,7 @@ def digest_data_threads(input_path, output_path, num_proc=False):
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-i', '--input', help='Path to input file. // Ruta del archivo de entrada.')
 argparser.add_argument('-o', '--output', help='Path to output file. // Ruta del archivo de salida.')
-argparser.add_argument('-p', '--processes', help='Number of processes. // Número de procesos.')
+argparser.add_argument('-p', '--processes', help='Number of processes. // Numero de procesos.')
 
 args = argparser.parse_args()
 
