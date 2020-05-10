@@ -185,7 +185,7 @@ def calculate_result(relations_list, retornar_lista = True):
 
 
 
-def a_star_threads(w1, w2, language='en'):
+def a_star_threads(w1, w2, h_fun="adaptative", language='en'):
     cosine = 0.4
     result = []  
     try:
@@ -196,9 +196,12 @@ def a_star_threads(w1, w2, language='en'):
             queue = [[{"concepto": w1}]]
             visited = []
             while queue:
-                cosine = cosine + 0.1
                 path = queue.pop(0)
                 node = path[-1]
+                if h_fun == "adaptative":
+                    cosine = m_embedding.similarity(w1, node["node"])
+                elif h_fun == "progressive":
+                    cosine = cosine + 0.1
                 if node not in visited:
                     for v in get_relations(word=node["concepto"], language=language, min_cosine=cosine):
                         if v["concepto"] == w2:
@@ -211,7 +214,7 @@ def a_star_threads(w1, w2, language='en'):
                             queue.append(new_path)
     except:
         direct_relations = []
-        
+
     if len(direct_relations) > 0:
         return direct_relations
 

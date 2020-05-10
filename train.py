@@ -9,13 +9,31 @@ from keras.optimizers import *
 from keras.callbacks import *
 from keras.utils.np_utils import to_categorical
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score
+from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import brown
 import gensim 
 from gensim.models import Word2Vec, KeyedVectors
 import argparse
 import os
+
+class Metrics(Callback):
+    def on_train_begin(self, logs={}):
+        self.val_f1s = []
+        self.val_recalls = []
+        self.val_precisions = []
+ 
+    def on_epoch_end(self, epoch, logs={}):
+        val_predict = list(map(lambda x: sum(x), np.where(self.model.predict(self.validation_data[0]) > 0.5, 1, 0)))
+        val_targ = list(map(lambda x: 1 - x[0], self.validation_data[1]))
+        _val_f1 = f1_score(val_targ, val_predict)
+        _val_recall = recall_score(val_targ, val_predict)
+        _val_precision = precision_score(val_targ, val_predict)
+        self.val_f1s.append(_val_f1)
+        self.val_recalls.append(_val_recall)
+        self.val_precisions.append(_val_precision)
+        print("— val_f1: %f — val_precision: %f — val_recall %f" %(_val_f1, _val_precision, _val_recall))
+        return
 
 def train(digested_file_path, epochs=50, path_embeddings = 'pre-trained/GoogleNews-vectors-negative300.bin.gz'):
     r = open(digested_file_path, "r")
@@ -111,10 +129,10 @@ def train(digested_file_path, epochs=50, path_embeddings = 'pre-trained/GoogleNe
     model.add(BN())
     model.add(GN(gn))
     model.add(Conv2D(64, kernel_size=3, activation='relu', padding='valid', strides=(1,1)))
-    model.add(BN())
-    model.add(GN(gn))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(128, kernel_size=3, activation='relu', padding='valid', strides=(1,1)))
+    #model.add(BN())
+    #model.add(GN(gn))
+    #model.add(MaxPooling2D(pool_size=(2, 2)))
+    #model.add(Conv2D(128, kernel_size=3, activation='relu', padding='valid', strides=(1,1)))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Flatten())
     model.add(Dense(1024, activation='relu'))
@@ -140,11 +158,12 @@ def train(digested_file_path, epochs=50, path_embeddings = 'pre-trained/GoogleNe
                                             verbose=1, 
                                             factor=0.5, 
                                             min_lr=0.0001)
-                          
+    metrics = Metrics()
+               
     history= model.fit(X_train, y_train, 
                             epochs=int(epochs),
                             validation_data=(X_test, y_test),
-                            callbacks=[learning_rate_reduction],
+                            callbacks=[metrics],
                             verbose=1)
     
     model.save(os.path.join(".", "pre-trained/Conceptnet.h5"))
@@ -160,15 +179,8 @@ def train(digested_file_path, epochs=50, path_embeddings = 'pre-trained/GoogleNe
     plt.legend(['train', 'validation', 'loss', 'val_loss'], loc='upper left')
     plt.show()
     #model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=epochs)
-    y_pred = model.predict(x)
-    #print(y_pred)
-    #print(y_pred.shape)
-    for threshold in np.arange(0.35,1,0.05):
-        y_det = list(map(lambda x: x[0] ^ x[1], np.where(y_pred > threshold, 1, 0)))
-        #y_det = list(map(lambda x: round(x[0] * 10) ^ round(x[1] * 10), y_pred))
-    #print(y.tolist())
-    #print(y_det.tolist())
-        print(f1_score(y.tolist(), y_det))
+
+
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-i', '--input', help='Path to digested file. // Ruta del archivo de entrada.')
