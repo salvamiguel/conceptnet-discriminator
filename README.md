@@ -16,7 +16,7 @@ This section describes how to install **ConceptNet Discriminator** cloning this 
 
 ### Requirements
 
-Before using this tool,\*\*\*\* following requirements must be fullfilled:
+Before using this tool, following requirements must be fullfilled:
 
 - Of course, `python3.7` has to be installed in your system though `python3.6` should be enough.
 - At least 15Gb of free space in your drive. [Conceptnet-lite](https://github.com/ldtoolkit/conceptnet-lite) automaticaly downloads a zipped copy of ConceptNet's database and when unzipped can take up to 11Gb of disk space.

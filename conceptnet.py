@@ -68,11 +68,14 @@ def get_direct_relations(c1, c2):
         [dict] -- Diccionario donde cada entrada corresponde al tipo de relacion y el valor el número de relaciones de ese tipo
     """
     relaciones = []
+    for con in c1:
+        concept = con.text
+        break
     for relacion in edges_between(c1, c2, two_way=False):
-        if relacion.start == c1:
-            relaciones.append([{"concepto": relacion.start.text, "relacion": relacion.relation.name, "direccion": -1}])
-        else:
+        if relacion.start.text == concept:
             relaciones.append([{"concepto": relacion.end.text, "relacion": relacion.relation.name, "direccion": 1}])
+        else:
+            relaciones.append([{"concepto": relacion.start.text, "relacion": relacion.relation.name, "direccion": -1}])
     return relaciones
 
 
@@ -102,6 +105,7 @@ def get_out_relations(word, language='en', min_cosine = 0):
             cosine = m_embedding.similarity(word, e.end.text)
         except:
             cosine = 0.2
+        print("Encontrado " + e.end.text + " con " + cosine)
         if str(e.end.language) == language and cosine > min_cosine:
             return {'concepto': e.end.text, 'relacion': e.relation.name, "direccion": 1}
     return [y for x in list(map(iterar_conceptos, concepto_obj)) if x is not None for y in x if y is not None]
@@ -134,6 +138,7 @@ def get_in_relations(word, language='en', min_cosine = 0):
             cosine = m_embedding.similarity(word, e.start.text)
         except:
             cosine = 0.2
+        print("Encontrado " + e.start.text + " con " + cosine)
         if str(e.start.language) == language and cosine > min_cosine:
             sol.append({'concepto': e.start.text, 'relacion': e.relation.name, "direccion": -1})
     return [y for x in list(map(iterar_conceptos, concepto_obj)) if x is not None for y in x if y is not None]
@@ -151,8 +156,12 @@ def calculate_result(relations_list, retornar_lista = True):
     flat_lista_relaciones = []
     if len(relations_list) >= 1 and isinstance(relations_list[0], list):
         for sub_lista in relations_list:
+            prof = 1
             for r in sub_lista:
+                r["prof"] = prof
                 flat_lista_relaciones.append(r)
+                prof = prof + 1
+
     else:
         flat_lista_relaciones = relations_list
  
@@ -185,8 +194,8 @@ def calculate_result(relations_list, retornar_lista = True):
 
 
 
-def a_star_threads(w1, w2, h_fun="adaptative", language='en'):
-    cosine = 0.4
+def a_star_threads(w1, w2, h_fun="adaptative", language='en', start_cosine = 0.8):
+    cosine = start_cosine
     result = []  
     try:
         c1 = get_concept(word=w1, language=language)
@@ -195,28 +204,41 @@ def a_star_threads(w1, w2, h_fun="adaptative", language='en'):
         if len(direct_relations) == 0:
             queue = [[{"concepto": w1}]]
             visited = []
+            prof = 1
+            cosines = [start_cosine, start_cosine]
             while queue:
+                print(queue)
                 path = queue.pop(0)
                 node = path[-1]
-                if h_fun == "adaptative":
-                    cosine = m_embedding.similarity(w1, node["node"])
-                elif h_fun == "progressive":
-                    cosine = cosine + 0.1
+                print(node)
+                print("Ajustando el cosine a " + str(cosines[prof]) + ", profundidad " + str(prof))
                 if node not in visited:
-                    for v in get_relations(word=node["concepto"], language=language, min_cosine=cosine):
+                    print("ENTRO")
+                    for v in get_relations(word=node["concepto"], language=language, min_cosine=cosines[prof]):
+                        print(v)
                         if v["concepto"] == w2:
                             path.append(v)
-                            result.append(result)
+                            result.append(path)
                             return result
                         else:
                             new_path = list(path)
                             new_path.append(v)
                             queue.append(new_path)
+                            if prof < len(path):
+                                prof = len(path)
+                                if h_fun == "adaptative":
+                                    try:
+                                        cosines[prof] = max(m_embedding.similarity(w1, path[-1]["concepto"]), cosines[prof-1])
+                                    except:
+                                        cosines[prof] = min((cosine + 0.1, 0.95))
+                                elif h_fun == "progressive":
+                                    cosines[prof] = min((cosine + 0.1, 0.95))
+                    visited.append(node)
+            return result
+        else:
+            return direct_relations
     except:
-        direct_relations = []
-
-    if len(direct_relations) > 0:
-        return direct_relations
+        return []
 
 
 
