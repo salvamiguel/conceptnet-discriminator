@@ -9,31 +9,14 @@ from keras.optimizers import *
 from keras.callbacks import *
 from keras.utils.np_utils import to_categorical
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score
+from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score, classification_report
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import brown
 import gensim 
 from gensim.models import Word2Vec, KeyedVectors
 import argparse
 import os
-
-class Metrics(Callback):
-    def on_train_begin(self, logs={}):
-        self.val_f1s = []
-        self.val_recalls = []
-        self.val_precisions = []
- 
-    def on_epoch_end(self, epoch, logs={}):
-        val_predict = list(map(lambda x: sum(x), np.where(self.model.predict(self.validation_data[0]) > 0.5, 1, 0)))
-        val_targ = list(map(lambda x: 1 - x[0], self.validation_data[1]))
-        _val_f1 = f1_score(val_targ, val_predict)
-        _val_recall = recall_score(val_targ, val_predict)
-        _val_precision = precision_score(val_targ, val_predict)
-        self.val_f1s.append(_val_f1)
-        self.val_recalls.append(_val_recall)
-        self.val_precisions.append(_val_precision)
-        print("— val_f1: %f — val_precision: %f — val_recall %f" %(_val_f1, _val_precision, _val_recall))
-        return
+import pandas as pd
 
 def train(digested_file_path, epochs=50, path_embeddings = 'pre-trained/GoogleNews-vectors-negative300.bin.gz'):
     r = open(digested_file_path, "r")
@@ -101,7 +84,7 @@ def train(digested_file_path, epochs=50, path_embeddings = 'pre-trained/GoogleNe
             similarity_2 = m_embedding.similarity(linea[1], linea[2])
         except:
             similarity_1 = 0.2
-    
+
         img_1 = np.dot(salida_1, entrada_1) * similarity_1
         img_2 = np.dot(salida_2, entrada_2) * similarity_2
         #max_ = np.amax([img_1, img_2])
@@ -121,22 +104,25 @@ def train(digested_file_path, epochs=50, path_embeddings = 'pre-trained/GoogleNe
     model = Sequential()
     #add model layers
     gn = 0
-    model.add(Conv2D(16, kernel_size=3, activation='relu', padding='valid', strides=(1,1), input_shape=(50,50,2)))
+    model.add(Conv2D(8, kernel_size=3, activation='relu', padding='valid', strides=(1,1), input_shape=(50,50,2)))
     model.add(BN())
     model.add(GN(gn))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(32, kernel_size=3, activation='relu', padding='valid', strides=(1,1)))    
+    model.add(Conv2D(16, kernel_size=3, activation='relu', padding='valid', strides=(1,1)))    
     model.add(BN())
     model.add(GN(gn))
-    model.add(Conv2D(64, kernel_size=3, activation='relu', padding='valid', strides=(1,1)))
-    #model.add(BN())
-    #model.add(GN(gn))
-    #model.add(MaxPooling2D(pool_size=(2, 2)))
-    #model.add(Conv2D(128, kernel_size=3, activation='relu', padding='valid', strides=(1,1)))
+    model.add(Conv2D(32, kernel_size=3, activation='relu', padding='valid', strides=(1,1)))
+    model.add(BN())
+    model.add(GN(gn))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(64, kernel_size=3, activation='relu', padding='valid', strides=(1, 1)))
+    model.add(BN())
+    model.add(GN(gn))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(128, kernel_size=3, activation='relu', padding='valid', strides=(1, 1)))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Flatten())
-    model.add(Dense(1024, activation='relu'))
-    model.add(Dense(512, activation='relu'))
+    model.add(Dense(128, activation='relu'))
     model.add(Dense(2, activation='softmax'))
 
     model.summary()
@@ -158,12 +144,11 @@ def train(digested_file_path, epochs=50, path_embeddings = 'pre-trained/GoogleNe
                                             verbose=1, 
                                             factor=0.5, 
                                             min_lr=0.0001)
-    metrics = Metrics()
                
     history= model.fit(X_train, y_train, 
                             epochs=int(epochs),
                             validation_data=(X_test, y_test),
-                            callbacks=[metrics],
+                            callbacks=[learning_rate_reduction],
                             verbose=1)
     
     model.save(os.path.join(".", "pre-trained/Conceptnet.h5"))
@@ -178,6 +163,10 @@ def train(digested_file_path, epochs=50, path_embeddings = 'pre-trained/GoogleNe
     plt.xlabel('epoch')
     plt.legend(['train', 'validation', 'loss', 'val_loss'], loc='upper left')
     plt.show()
+    predict = model.predict(X_test)
+    report = classification_report(np.argmax(y_test,axis=1), np.argmax(predict, axis=1))
+    print(report)
+
     #model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=epochs)
 
 

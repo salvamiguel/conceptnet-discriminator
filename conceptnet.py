@@ -158,7 +158,7 @@ def calculate_result(relations_list):
     flat_lista_relaciones = []
     if len(relations_list) >= 1 and isinstance(relations_list[0], list):
         for sub_lista in relations_list:
-            prof = 0
+            prof = 1
             for r in sub_lista:
                 r["prof"] = prof
                 flat_lista_relaciones.append(r)
@@ -184,50 +184,53 @@ def calculate_result(relations_list):
 
 
 
-def a_star_threads(w1, w2, h_fun="adaptative", language='en', start_cosine = 0.1):
+def a_star_threads(w1, w2, h_fun="adaptative", language='en', start_cosine = 0.25):
     cosine = start_cosine
     result = []  
     try:
         c1 = get_concept(word=w1, language=language)
         c2 = get_concept(word=w2, language=language)
         direct_relations = get_direct_relations(c1, c2)
-        if len(direct_relations) == 0:
-            queue = [[{"concepto": w1}]]
-            visited = []
-            prof = 1
-            cosines = [start_cosine, start_cosine]
-            while queue:
-                #print("Profundidad " + str(prof))
-                path = queue.pop(0)
-                node = path[-1]
-                if node not in visited:
-                    for v in get_relations(word=node["concepto"], language=language, min_cosine=cosine):
-                        if v["concepto"] == w2:
-                            path.append(v)
-                            result.append(path)
-                        else:
-                            new_path = list(path)
-                            new_path.append(v)
-                            queue.append(new_path)
-                            if prof < len(path):
-                                prof = len(path)
-                                if h_fun == "adaptative":
-                                    try:
-                                        cosines[prof].append(m_embedding.similarity(w1, v["concepto"]))
-                                        cosine = np.mean(cosines)
-                                    except:
-                                        cosine = min((cosine + 0.1, 0.95))
-                                elif h_fun == "progressive":
-                                    cosine = min((cosine + 0.1, 0.95))
-                                print("Ajustando el cosine a " + str(cosine) + ", profundidad " + str(prof))
-                    if len(result) > 0 or prof > 4:
-                        return result
-                    visited.append(node)
-            return result
-        else:
-            return direct_relations
-    except:
+    except Exception as e:
+        print(str(e))
         return []
 
+    if len(direct_relations) == 0:
+        queue = [[{"concepto": w1}]]
+        visited = []
+        prof = 1
+        cosines = [[start_cosine]]
+        while queue:
+            path = queue.pop(0)
+            prof = len(path)
+            if len(cosines) -1 < prof:
+                cosines.append(cosine[prof-1])
+            cosine = np.mean(cosines[prof])
+            node = path[-1]
+            if node not in visited:
+                for v in get_relations(word=node["concepto"], language=language, min_cosine=cosine):
+                    if v["concepto"] == w2:
+                        path.append(v)
+                        result.append(path)
+                    else:
+                        new_path = list(path)
+                        new_path.append(v)
+                        queue.append(new_path)
+                        prof = len(path)
+                    if h_fun == "adaptative":
+                        try:
+                            cosines[prof].append(m_embedding.similarity(w1, v["concepto"]))
+                        except:
+                            cosines[prof].append(0.2)
+
+                    elif h_fun == "progressive":
+                        cosine = min((cosine + 0.1, 0.95))
+                        #print("Ajustando el cosine a " + str(cosine) + ", profundidad " + str(prof))
+                if len(result) > 0 or prof > 3:
+                    return result
+                visited.append(node)
+        return result
+    else:
+        return direct_relations
 
 
