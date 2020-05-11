@@ -204,7 +204,7 @@ def a_star_threads(w1, w2, h_fun="adaptative", language='en', start_cosine = 0.2
             path = queue.pop(0)
             prof = len(path)
             if len(cosines) - 1 < prof:
-                cosines.append(cosine[prof-1])
+                cosines.append(cosines[prof-1])
             cosine = np.mean(cosines[prof])
             node = path[-1]
             if node not in visited:
