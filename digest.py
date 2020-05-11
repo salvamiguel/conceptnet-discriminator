@@ -18,11 +18,11 @@ def read_from_file(file):
         data.append(tuple() + tuple(i for i in line.replace("\n", "").split(',')))
     return data
 
-def digest(output_lock, output_path, line_data):
+def digest(output_lock, output_path, min_cosine, max_jumps, line_data):
     
     position = line_data[0]
-    rel_1 = calculate_result(a_star_threads(line_data[1], line_data[3]))
-    rel_2 = calculate_result(a_star_threads(line_data[2], line_data[3]))
+    rel_1 = calculate_result(a_star_threads(w1=line_data[1], w2=line_data[3], start_cosine=min_cosine, max_jumps=max_jumps))
+    rel_2 = calculate_result(a_star_threads(w1=line_data[2], w2=line_data[3], start_cosine=min_cosine, max_jumps=max_jumps))
     r = [position, line_data[1], line_data[2], line_data[3], rel_1, rel_2, int(line_data[4])]
 
 
@@ -35,8 +35,8 @@ def digest(output_lock, output_path, line_data):
     finally:
         output_lock.release()
 
-def digest_data_threads(input_path, output_path, num_proc=False):
-    if not num_proc:
+def digest_data_threads(input_path, output_path, min_cosine=0.2, max_jumps = 3, num_proc=None):
+    if num_proc == None:
         num_proc = os.cpu_count()
     tuples = read_from_file(input_path)
     pos = 0
@@ -50,7 +50,7 @@ def digest_data_threads(input_path, output_path, num_proc=False):
         lines.append(l)
         pos = pos + 1
 
-    func = partial(digest, output_lock, output_path)
+    func = partial(digest, output_lock, output_path, min_cosine, max_jumps)
 
     with tqdm(total=len(lines)) as pbar:
             for i, _ in enumerate(pool.imap(func, lines)):
@@ -64,8 +64,12 @@ def digest_data_threads(input_path, output_path, num_proc=False):
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-i', '--input', help='Path to input file. // Ruta del archivo de entrada.')
 argparser.add_argument('-o', '--output', help='Path to output file. // Ruta del archivo de salida.')
+argparser.add_argument('-c', '--cosine', help='Min cosine in relations. // Minimos coseno en relaciones.', default=0.2)
+argparser.add_argument('-j', '--jumps', help='Max jumps in relations. // Número máximo de saltos relaciones.', default=3)
+
+
 argparser.add_argument('-p', '--processes', help='Number of processes. // Numero de procesos.')
 
 args = argparser.parse_args()
 
-digest_data_threads(args.input, args.output)
+digest_data_threads(input_path=args.input, output_path=args.output, min_cosine=float(args.cosine), max_jumps=int(args.jumps))

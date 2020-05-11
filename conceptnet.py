@@ -184,7 +184,7 @@ def calculate_result(relations_list):
 
 
 
-def a_star_threads(w1, w2, h_fun="adaptative", language='en', start_cosine = 0.25):
+def a_star_threads(w1, w2, h_fun="adaptative", language='en', start_cosine = 0.25, max_jumps=3):
     cosine = start_cosine
     result = []  
     try:
@@ -198,13 +198,13 @@ def a_star_threads(w1, w2, h_fun="adaptative", language='en', start_cosine = 0.2
     if len(direct_relations) == 0:
         queue = [[{"concepto": w1}]]
         visited = []
-        prof = 1
+        prof = 0
         cosines = [[start_cosine]]
         while queue:
             path = queue.pop(0)
             prof = len(path)
             if len(cosines) - 1 < prof:
-                cosines.append(cosines[prof-1])
+                cosines.append([cosine])
             cosine = np.mean(cosines[prof])
             node = path[-1]
             if node not in visited:
@@ -216,7 +216,6 @@ def a_star_threads(w1, w2, h_fun="adaptative", language='en', start_cosine = 0.2
                         new_path = list(path)
                         new_path.append(v)
                         queue.append(new_path)
-                        prof = len(path)
                     if h_fun == "adaptative":
                         try:
                             cosines[prof].append(m_embedding.similarity(w1, v["concepto"]))
@@ -226,7 +225,7 @@ def a_star_threads(w1, w2, h_fun="adaptative", language='en', start_cosine = 0.2
                     elif h_fun == "progressive":
                         cosine = min((cosine + 0.1, 0.95))
                         #print("Ajustando el cosine a " + str(cosine) + ", profundidad " + str(prof))
-                if len(result) > 0 or prof > 3:
+                if len(result) > 0 or prof > max_jumps or all(len(x) > max_jumps for x in queue):
                     return result
                 visited.append(node)
         return result
