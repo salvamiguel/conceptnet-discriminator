@@ -6,4 +6,5 @@ __pycache__/*
 /*.txt
 /cache/cache.txt
 /results/
-/pre-trained/*
+/conceptnet_discriminator/pre-trained/*.gz
+.vscode

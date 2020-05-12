@@ -12,8 +12,8 @@ from pymongo import MongoClient
 import gensim 
 from gensim.models import Word2Vec, KeyedVectors
 
-
-path_embeddings = 'pre-trained/GoogleNews-vectors-negative300.bin.gz'
+print("Loading wordembeddings model.")
+path_embeddings = 'pre-trained/googlenews.gz'
 m_embedding = KeyedVectors.load_word2vec_format(path_embeddings, binary=True)
 
 

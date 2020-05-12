@@ -37,12 +37,7 @@ def train(digested_file_path, epochs=50, path_embeddings = 'pre-trained/GoogleNe
        
     
 
-    print("Loading wordembeddings model")
-    if os.path.isfile(path_embeddings):
-        m_embedding = KeyedVectors.load_word2vec_format(path_embeddings, binary=True)
-    else:
-        m_embedding = Word2Vec(brown.sents())
-        m_embedding.save('pre-trained/' + digested_file_path.replace("/", "_") + ".embedding")
+
     
 
     x = []
