@@ -67,11 +67,11 @@ def train(digested_file_path, epochs=50):
         entrada_2 = entrada_2 + np.ones(entrada_2.shape)
 
         try:
-            similarity_1 = m_embedding.similarity(line[0], line[2])
+            similarity_1 = conceptnet.m_embedding.similarity(line[0], line[2])
         except:
             similarity_1 = 0.2
         try:
-            similarity_2 = m_embedding.similarity(line[1], line[2])
+            similarity_2 = conceptnet.m_embedding.similarity(line[1], line[2])
         except:
             similarity_1 = 0.2
 
