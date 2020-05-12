@@ -65,7 +65,7 @@ def get_direct_relations(c1, c2):
         c2 {peewee.ModelSelect} -- End concept // Concepto final
 
     Returns:
-        [dict] -- Diccionario donde cada entrada corresponde al tipo de relacion y el valor el número de relaciones de ese tipo
+        dict -- Diccionario donde cada entrada corresponde al tipo de relacion y el valor el número de relaciones de ese tipo
     """
     relaciones = []
     for con in c1:
@@ -81,16 +81,16 @@ def get_direct_relations(c1, c2):
 
 
 def get_out_relations(word, language='en', min_cosine = 0):
-    """Obtiene las relaciones de salida de un concepto
+    """Gets out relations from concept // Obtiene las relaciones de salida de un concepto
 
     Arguments:
-        concepto {str} -- El concepto objeto de la búsqueda
+        word {str} -- Word which we lookup //  La palabra objeto de la búsqueda
 
     Keyword Arguments:
-        language {str} -- Idioma en el que se hace la búsqueda de la etiqueta (default: {'en'})
+        language {str} -- Search's language, use two letter strings // Idioma en el que se hace la búsqueda de la etiqueta, usar identificador de dos letras (default: {'en'})
 
     Returns:
-        list -- Retorna una lista con las relaciones de salida
+        list -- Returns list with out relations // Retorna una lista con las relaciones de salida
     """
     try:
         concepto_obj = get_concept(word, language)
@@ -114,16 +114,16 @@ def get_out_relations(word, language='en', min_cosine = 0):
 
 
 def get_in_relations(word, language='en', min_cosine = 0):
-    """Obtiene las relaciones de salida de un concepto
+    """Gets out relations from concept // Obtiene las relaciones de salida de un concepto
 
     Arguments:
-        concepto {str} -- El concepto objeto de la búsqueda
+        word {str} -- Word which we lookup //  La palabra objeto de la búsqueda
 
     Keyword Arguments:
-        language {str} -- Idioma en el que se hace la búsqueda de la etiqueta (default: {'en'})
+        language {str} -- Search's language, use two letter strings // Idioma en el que se hace la búsqueda de la etiqueta, usar identificador de dos letras (default: {'en'})
 
     Returns:
-        list -- Retorna una lista con las relaciones de salida
+        list -- Returns list with in relations // Retorna una lista con las relaciones de salida
     """
     try:
         concepto_obj = get_concept(word, language)
@@ -146,7 +146,19 @@ def get_in_relations(word, language='en', min_cosine = 0):
     return [y for x in list(map(iterar_conceptos, concepto_obj)) if x is not None for y in x if y is not None]
 
 
-def get_relations(word, language = 'en', min_cosine = 0):
+def get_relations(word, language='en', min_cosine=0):
+    """Gets both in and out relations from concept // Obtine las relaciones de entrada y salida desde un concepto
+
+    Arguments:
+        word {str} -- Word which we lookup //  La palabra objeto de la búsqueda
+
+    Keyword Arguments:
+        language {str} -- Search's language, use two letter strings // Idioma en el que se hace la búsqueda de la etiqueta, usar identificador de dos letras (default: {'en'})
+        min_cosine {int} -- Min cosine similarity from relations (default: {0})
+
+    Returns:
+        list -- Concatenated list with all relations
+    """
     return get_in_relations(word, language, min_cosine) + get_out_relations(word, language, min_cosine)
 
 

@@ -1,69 +1,64 @@
+
+import os
+import argparse
 import json
-import numpy as np
 import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense, Conv2D, Flatten, MaxPooling2D
-from keras.layers import GaussianNoise as GN, Dense, Dropout, Activation, Flatten
+from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers.normalization import BatchNormalization as BN
 from keras.optimizers import *
 from keras.callbacks import *
 from keras.utils.np_utils import to_categorical
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score, classification_report
-from nltk.tokenize import sent_tokenize, word_tokenize
-from nltk.corpus import brown
-import gensim 
-from gensim.models import Word2Vec, KeyedVectors
-import argparse
-import os
-import pandas as pd
+import conceptnet
 
-def train(digested_file_path, epochs=50, path_embeddings = 'pre-trained/GoogleNews-vectors-negative300.bin.gz'):
+
+def read_digested(digested_file_path):
     r = open(digested_file_path, "r")
-    lineas = r.readlines()
-    palabras = []
-    for linea in lineas:
-        palabras.append(json.loads(linea))
+    lines = r.readlines()
+    triplets = []
+    for linea in lines:
+        triplets.append(json.loads(linea))
 
-    palabras = sorted(palabras)
+    triplets = sorted(triplets)
     
-    corpus = []
-
-    for palabra in palabras:
+    for palabra in triplets:
         palabra.pop(0)
-        corpus.append(palabra[0])
-        corpus.append(palabra[1])
-        corpus.append(palabra[2])
+    
+    return triplets
+
+    
+def train(digested_file_path, epochs=50):
+
        
+    triplets = read_digested(digested_file_path)
     
-
-
-    
-
     x = []
     y = []
-    for linea in palabras:
-        y.append(linea[5])
+    for line in triplets:
+        y.append(line[5])
 
-        print("Reading " + str(linea[0]) + ", " + str(linea[1]) + ", " + str(linea[2]))
+        print("Reading " + str(line[0]) + ", " + str(line[1]) + ", " + str(line[2]))
 
-        if len(linea[3][0]) is not 50 or len(linea[3][1]) is not 50:
-            print(linea)
-            print(len(linea[3][0]))
-            print(len(linea[3][1]))
+        if len(line[3][0]) is not 50 or len(line[3][1]) is not 50:
+            print(line)
+            print(len(line[3][0]))
+            print(len(line[3][1]))
             return
 
-        salida_1 = np.array(linea[3][0]).reshape(50,1)
-        entrada_1 = np.array(linea[3][1]).reshape(1, 50)
+        salida_1 = np.array(line[3][0]).reshape(50,1)
+        entrada_1 = np.array(line[3][1]).reshape(1, 50)
 
-        if len(linea[4][0]) is not 50 or len(linea[4][1]) is not 50:
-            print(linea)
-            print(len(linea[4][0]))
-            print(len(linea[4][1]))
+        if len(line[4][0]) is not 50 or len(line[4][1]) is not 50:
+            print(line)
+            print(len(line[4][0]))
+            print(len(line[4][1]))
             return
 
-        salida_2 = np.array(linea[4][0]).reshape(50,1)
-        entrada_2 = np.array(linea[4][1]).reshape(1, 50)
+        salida_2 = np.array(line[4][0]).reshape(50,1)
+        entrada_2 = np.array(line[4][1]).reshape(1, 50)
 
         salida_1 = salida_1 + np.ones(salida_1.shape)
         salida_2 = salida_2 + np.ones(salida_2.shape)
@@ -72,11 +67,11 @@ def train(digested_file_path, epochs=50, path_embeddings = 'pre-trained/GoogleNe
         entrada_2 = entrada_2 + np.ones(entrada_2.shape)
 
         try:
-            similarity_1 = m_embedding.similarity(linea[0], linea[2])
+            similarity_1 = m_embedding.similarity(line[0], line[2])
         except:
             similarity_1 = 0.2
         try:
-            similarity_2 = m_embedding.similarity(linea[1], linea[2])
+            similarity_2 = m_embedding.similarity(line[1], line[2])
         except:
             similarity_1 = 0.2
 
@@ -89,7 +84,7 @@ def train(digested_file_path, epochs=50, path_embeddings = 'pre-trained/GoogleNe
 
         x.append([img_1, img_2])
     x = np.array(x)
-    x = x.reshape(len(palabras),50,50,2)
+    x = x.reshape(len(triplets),50,50,2)
 
     y = np.array(y)
     #print(x.shape)
@@ -98,21 +93,16 @@ def train(digested_file_path, epochs=50, path_embeddings = 'pre-trained/GoogleNe
     #create model
     model = Sequential()
     #add model layers
-    gn = 0
     model.add(Conv2D(8, kernel_size=3, activation='relu', padding='valid', strides=(1,1), input_shape=(50,50,2)))
     model.add(BN())
-    model.add(GN(gn))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Conv2D(16, kernel_size=3, activation='relu', padding='valid', strides=(1,1)))    
     model.add(BN())
-    model.add(GN(gn))
     model.add(Conv2D(32, kernel_size=3, activation='relu', padding='valid', strides=(1,1)))
     model.add(BN())
-    model.add(GN(gn))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Conv2D(64, kernel_size=3, activation='relu', padding='valid', strides=(1, 1)))
     model.add(BN())
-    model.add(GN(gn))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Conv2D(128, kernel_size=3, activation='relu', padding='valid', strides=(1, 1)))
     model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -146,8 +136,8 @@ def train(digested_file_path, epochs=50, path_embeddings = 'pre-trained/GoogleNe
                             callbacks=[learning_rate_reduction],
                             verbose=1)
     
-    model.save(os.path.join(".", "pre-trained/Conceptnet.h5"))
-    model.save_weights(os.path.join(".", 'pre-trained/FINAL_WEIGHTS.hdf5'), overwrite=True)
+    model.save(os.path.join(".", "pre-trained/en_conceptnet.h5"))
+    model.save_weights(os.path.join(".", 'pre-trained/en_weights.hdf5'), overwrite=True)
 
     plt.plot(history.history['acc'])
     plt.plot(history.history['val_acc'])

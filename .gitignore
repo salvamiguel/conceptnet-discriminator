@@ -1,4 +1,4 @@
-db/db_conceptnet.db
+/conceptnet_discriminator/db/db_conceptnet.db
 .DS_Store
 __pycache__/*
 .vscode/.ropeproject/config.py
