@@ -19,18 +19,18 @@ def read_digested(digested_file_path):
     r = open(digested_file_path, "r")
     lines = r.readlines()
     triplets = []
-    for linea in lines:
-        triplets.append(json.loads(linea))
+    for line in lines:
+        triplets.append(json.loads(line))
 
     triplets = sorted(triplets)
     
-    for palabra in triplets:
-        palabra.pop(0)
+    for line in triplets:
+        line.pop(0)
     
     return triplets
 
     
-def train(digested_file_path, epochs=50):
+def train(digested_file_path, epochs=50, opt_type=0):
 
        
     triplets = read_digested(digested_file_path)
@@ -112,11 +112,8 @@ def train(digested_file_path, epochs=50):
 
     model.summary()
     
-    #opt = SGD(lr=0.01, decay=1e-6, momentum=0.75, nesterov=True)
-    #opt = Nadam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-7, schedule_decay=0.004)
-    #opt = rmsprop(lr=0.001,decay=1e-6)
-    opt = Adadelta(learning_rate=0.001, rho=0.95, epsilon=1e-07)
-    #opt = Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-06, decay=0.0)
+    opts = [SGD(lr=0.01, decay=1e-6, momentum=0.75, nesterov=True),  Nadam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-7, schedule_decay=0.004), rmsprop(lr=0.001,decay=1e-6), Adadelta(learning_rate=0.001, rho=0.95, epsilon=1e-07), Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-06, decay=0.0)]
+    opt = opts[opt_type]
     model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['acc'])
 
     X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.15)
@@ -159,6 +156,8 @@ def train(digested_file_path, epochs=50):
 argparser = argparse.ArgumentParser()
 argparser.add_argument('-i', '--input', help='Path to digested file. // Ruta del archivo de entrada.')
 argparser.add_argument('-e', '--epochs', help='Number of epochs. // Número de epochs', default=50)
+argparser.add_argument('-o', '--opt', help='Optimizer. // Optimizador', default=3)
+
 args = argparser.parse_args()
 
 train(args.input, args.epochs)

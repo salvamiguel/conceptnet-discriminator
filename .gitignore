@@ -8,3 +8,5 @@ __pycache__/*
 /results/
 /conceptnet_discriminator/pre-trained/*.gz
 .vscode
+img/
+conceptnet_discriminator/__pycache__/*

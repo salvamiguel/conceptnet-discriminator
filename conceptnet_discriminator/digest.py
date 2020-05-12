@@ -1,5 +1,22 @@
 from conceptnet import *
 
+def indexes_already_digested(digested_file_path):
+    if os.path.exists(digested_file_path):
+        r = open(digested_file_path, "r")
+        lines = r.readlines()
+        triplets = []
+        for line in lines:
+            triplets.append(json.loads(line))
+
+        triplets = sorted(triplets)
+        
+        lines_readed = [item[0] for item in triplets]
+        
+        return lines_readed
+    else:
+        return  []
+
+
 def read_from_file(file):
     """Reads data from file to digest and prepare it to the neural network.
     File format has to match with the following: <word1>, <word2>, <attribute>, <0 | 1 whether if attribute is discriminative>
@@ -39,15 +56,17 @@ def digest_data_threads(input_path, output_path, min_cosine=0.2, max_jumps = 3, 
     if num_proc == None:
         num_proc = os.cpu_count()
     tuples = read_from_file(input_path)
+    indexes_digested = indexes_already_digested(output_path)
     pos = 0
     pool = Pool(processes=num_proc)
     m = Manager()
     output_lock = m.Lock()
     lines = []
     for line in tuples:
-        l_pos = (pos,)
-        l = l_pos + line
-        lines.append(l)
+        if pos not in indexes_digested:
+            l_pos = (pos,)
+            l = l_pos + line
+            lines.append(l)
         pos = pos + 1
 
     func = partial(digest, output_lock, output_path, min_cosine, max_jumps)
@@ -71,5 +90,7 @@ argparser.add_argument('-j', '--jumps', help='Max jumps in relations. // Número
 argparser.add_argument('-p', '--processes', help='Number of processes. // Numero de procesos.')
 
 args = argparser.parse_args()
+print("Indexes already digested:")
+print(indexes_already_digested(args.output))
 
 digest_data_threads(input_path=args.input, output_path=args.output, min_cosine=float(args.cosine), max_jumps=int(args.jumps))
