@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/salvamiguel/conceptnet-discriminator/master/conceptnet_discriminator/logo.svg" height="100">
+
 # ConceptNet Discriminator
 
 Discriminate concepts with attributes using ConceptNet5.7's Knowledge Graph. This tool uses artificial neural networks and other technics to determinate whether two words can be discriminated by an attribute. For instance, given the words `apple`, `banana` and the attribute `red` this tool returns `True` because `apple` is `related_to` `red` while `banana` is not. This task was part of [SemEval-2018](https://www.aclweb.org/anthology/S18-1117.pdf), labeled as "Task 10: Capturing Discriminative Attributes".
